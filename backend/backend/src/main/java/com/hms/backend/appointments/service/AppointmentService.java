@@ -1,6 +1,7 @@
 package com.hms.backend.appointments.service;
 
 import com.hms.backend.appointments.dto.AppointmentCreateRequest;
+import com.hms.backend.appointments.dto.AppointmentDetailsResponse;
 import com.hms.backend.appointments.dto.AppointmentResponse;
 import com.hms.backend.appointments.entity.Appointment;
 import com.hms.backend.appointments.repository.AppointmentRepository;
@@ -10,6 +11,7 @@ import com.hms.backend.patients.entity.Patient;
 import com.hms.backend.patients.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,77 +23,63 @@ public class AppointmentService {
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
 
-
-
-    public AppointmentResponse bookAppointment(
-            AppointmentCreateRequest request
-    ) {
+    public AppointmentResponse bookAppointment(AppointmentCreateRequest request) {
 
         Patient patient = patientRepository
                 .findById(request.getPatientId())
-                .orElseThrow(() ->
-                        new RuntimeException("Patient not found"));
+                .orElseThrow(() -> new RuntimeException("Patient not found"));
 
         Doctor doctor = doctorRepository
                 .findById(request.getDoctorId())
-                .orElseThrow(() ->
-                        new RuntimeException("Doctor not found"));
+                .orElseThrow(() -> new RuntimeException("Doctor not found"));
 
         boolean slotBooked =
-                appointmentRepository
-                        .existsByDoctorDoctorIdAndAppointmentDateAndAppointmentTime(
-                                doctor.getDoctorId(),
-                                request.getAppointmentDate(),
-                                request.getAppointmentTime()
-                        );
+                appointmentRepository.existsByDoctorDoctorIdAndAppointmentDateAndAppointmentTime(
+                        doctor.getDoctorId(),
+                        request.getAppointmentDate(),
+                        request.getAppointmentTime()
+                );
 
         if (slotBooked) {
-            throw new RuntimeException(
-                    "Selected appointment slot is already booked"
-            );
+            throw new RuntimeException("Selected appointment slot is already booked");
         }
 
-        Appointment appointment =
-                Appointment.builder()
-                        .appointmentNumber(generateAppointmentNumber())
-                        .tokenNumber(generateTokenNumber())
-                        .patient(patient)
-                        .doctor(doctor)
-                        .appointmentDate(request.getAppointmentDate())
-                        .appointmentTime(request.getAppointmentTime())
-                        .reasonForVisit(request.getReasonForVisit())
-                        .status("SCHEDULED")
-                        .build();
+        Appointment appointment = Appointment.builder()
+                .appointmentNumber(generateAppointmentNumber())
+                .tokenNumber(generateTokenNumber())
+                .patient(patient)
+                .doctor(doctor)
+                .appointmentDate(request.getAppointmentDate())
+                .appointmentTime(request.getAppointmentTime())
+                .reasonForVisit(request.getReasonForVisit())
+                .status("SCHEDULED")
+                .build();
 
-        Appointment savedAppointment =
-                appointmentRepository.save(appointment);
+        Appointment savedAppointment = appointmentRepository.save(appointment);
 
         return AppointmentResponse.builder()
-                .appointmentId(
-                        savedAppointment.getAppointmentId()
-                )
-                .appointmentNumber(
-                        savedAppointment.getAppointmentNumber()
-                )
-                .tokenNumber(
-                        savedAppointment.getTokenNumber()
-                )
-                .status(
-                        savedAppointment.getStatus()
-                )
-                .message(
-                        "Appointment booked successfully"
-                )
+                .appointmentId(savedAppointment.getAppointmentId())
+                .appointmentNumber(savedAppointment.getAppointmentNumber())
+                .tokenNumber(savedAppointment.getTokenNumber())
+                .status(savedAppointment.getStatus())
+                .message("Appointment booked successfully")
                 .build();
     }
 
-    public List<Appointment> getAllAppointments() {
-        return appointmentRepository.findAll();
+    @Transactional(readOnly = true)
+    public List<AppointmentDetailsResponse> getAllAppointments() {
+        return appointmentRepository.findAllAppointmentsWithDetails()
+                .stream()
+                .map(this::mapToDetailsResponse)
+                .toList();
     }
 
-    public Appointment getAppointmentById(Long appointmentId) {
-        return appointmentRepository.findById(appointmentId)
+    @Transactional(readOnly = true)
+    public AppointmentDetailsResponse getAppointmentById(Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + appointmentId));
+
+        return mapToDetailsResponse(appointment);
     }
 
     public AppointmentResponse cancelAppointment(Long appointmentId) {
@@ -99,6 +87,7 @@ public class AppointmentService {
                 .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + appointmentId));
 
         appointment.setStatus("CANCELLED");
+
         Appointment updatedAppointment = appointmentRepository.save(appointment);
 
         return AppointmentResponse.builder()
@@ -111,22 +100,22 @@ public class AppointmentService {
     }
 
     public AppointmentResponse rescheduleAppointment(Long appointmentId, AppointmentCreateRequest request) {
+
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + appointmentId));
 
-        // Check if the newly requested slot is already taken by this doctor
         boolean slotBooked = appointmentRepository
-                .existsByDoctorDoctorIdAndAppointmentDateAndAppointmentTime(
+                .existsByDoctorDoctorIdAndAppointmentDateAndAppointmentTimeAndAppointmentIdNot(
                         appointment.getDoctor().getDoctorId(),
                         request.getAppointmentDate(),
-                        request.getAppointmentTime()
+                        request.getAppointmentTime(),
+                        appointmentId
                 );
 
         if (slotBooked) {
             throw new RuntimeException("Selected appointment slot is already booked");
         }
 
-        // Update the date, time, and set status back to SCHEDULED
         appointment.setAppointmentDate(request.getAppointmentDate());
         appointment.setAppointmentTime(request.getAppointmentTime());
         appointment.setStatus("SCHEDULED");
@@ -142,6 +131,43 @@ public class AppointmentService {
                 .build();
     }
 
+    private AppointmentDetailsResponse mapToDetailsResponse(Appointment appointment) {
+
+        String patientName = "N/A";
+        String doctorName = "N/A";
+
+        if (appointment.getPatient() != null &&
+                appointment.getPatient().getUser() != null) {
+            patientName = appointment.getPatient().getUser().getFullName();
+        }
+
+        if (appointment.getDoctor() != null &&
+                appointment.getDoctor().getUser() != null) {
+            doctorName = appointment.getDoctor().getUser().getFullName();
+        }
+
+        return AppointmentDetailsResponse.builder()
+                .appointmentId(appointment.getAppointmentId())
+                .appointmentNumber(appointment.getAppointmentNumber())
+                .tokenNumber(appointment.getTokenNumber())
+                .appointmentDate(appointment.getAppointmentDate())
+                .appointmentTime(appointment.getAppointmentTime())
+                .reasonForVisit(appointment.getReasonForVisit())
+                .status(appointment.getStatus())
+
+                .patientId(appointment.getPatient() != null
+                        ? appointment.getPatient().getPatientId()
+                        : null)
+                .patientName(patientName)
+
+                .doctorId(appointment.getDoctor() != null
+                        ? appointment.getDoctor().getDoctorId()
+                        : null)
+                .doctorName(doctorName)
+
+                .build();
+    }
+
     private String generateAppointmentNumber() {
         return "APT-" + System.currentTimeMillis();
     }
@@ -149,6 +175,4 @@ public class AppointmentService {
     private String generateTokenNumber() {
         return "TK-" + (System.currentTimeMillis() % 10000);
     }
-
-
 }

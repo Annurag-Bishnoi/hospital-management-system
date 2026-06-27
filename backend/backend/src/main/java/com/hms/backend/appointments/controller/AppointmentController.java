@@ -1,10 +1,14 @@
 package com.hms.backend.appointments.controller;
 
 import com.hms.backend.appointments.dto.AppointmentCreateRequest;
+import com.hms.backend.appointments.dto.AppointmentDetailsResponse;
+import com.hms.backend.appointments.dto.AppointmentResponse;
 import com.hms.backend.appointments.service.AppointmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/appointments")
@@ -14,8 +18,8 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
 
-    @PostMapping
-    public ResponseEntity<?> bookAppointment(
+    @PostMapping("/register")
+    public ResponseEntity<AppointmentResponse> bookAppointment(
             @RequestBody AppointmentCreateRequest request
     ) {
         return ResponseEntity.ok(
@@ -23,15 +27,15 @@ public class AppointmentController {
         );
     }
 
-    @GetMapping
-    public ResponseEntity<?> getAllAppointments() {
+    @GetMapping("/get")
+    public ResponseEntity<List<AppointmentDetailsResponse>> getAllAppointments() {
         return ResponseEntity.ok(
                 appointmentService.getAllAppointments()
         );
     }
 
     @GetMapping("/{appointmentId}")
-    public ResponseEntity<?> getAppointmentById(
+    public ResponseEntity<AppointmentDetailsResponse> getAppointmentById(
             @PathVariable Long appointmentId
     ) {
         return ResponseEntity.ok(
@@ -40,7 +44,7 @@ public class AppointmentController {
     }
 
     @PutMapping("/{appointmentId}/cancel")
-    public ResponseEntity<?> cancelAppointment(
+    public ResponseEntity<AppointmentResponse> cancelAppointment(
             @PathVariable Long appointmentId
     ) {
         return ResponseEntity.ok(
@@ -49,7 +53,7 @@ public class AppointmentController {
     }
 
     @PutMapping("/{appointmentId}/reschedule")
-    public ResponseEntity<?> rescheduleAppointment(
+    public ResponseEntity<AppointmentResponse> rescheduleAppointment(
             @PathVariable Long appointmentId,
             @RequestBody AppointmentCreateRequest request
     ) {
@@ -58,4 +62,3 @@ public class AppointmentController {
         );
     }
 }
-
