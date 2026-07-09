@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -131,6 +132,29 @@ public class AppointmentService {
                 .build();
     }
 
+    @Transactional
+    public AppointmentResponse updateStatus(Long appointmentId, String status) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + appointmentId));
+        appointment.setStatus(status);
+        Appointment updated = appointmentRepository.save(appointment);
+        return AppointmentResponse.builder()
+                .appointmentId(updated.getAppointmentId())
+                .appointmentNumber(updated.getAppointmentNumber())
+                .tokenNumber(updated.getTokenNumber())
+                .status(updated.getStatus())
+                .message("Status updated to " + status)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AppointmentDetailsResponse> getReadyAppointments() {
+        return appointmentRepository.findAllAppointmentsWithDetails().stream()
+                .filter(a -> "READY_FOR_DOCTOR".equals(a.getStatus()))
+                .map(this::mapToDetailsResponse)
+                .toList();
+    }
+
     private AppointmentDetailsResponse mapToDetailsResponse(Appointment appointment) {
 
         String patientName = "N/A";
@@ -166,6 +190,49 @@ public class AppointmentService {
                 .doctorName(doctorName)
 
                 .build();
+    }
+
+
+    // Add this method inside your AppointmentService class
+    @Transactional(readOnly = true)
+    public List<AppointmentDetailsResponse> getAppointmentsForDoctor(
+            Long doctorId,
+            LocalDate date,
+            String status,
+            Boolean today
+    ) {
+        // If 'today' is true, override the date parameter with the current date
+        if (Boolean.TRUE.equals(today)) {
+            date = LocalDate.now();
+        }
+
+        // Fetch and map the results
+        return appointmentRepository.findDoctorAppointmentsWithFilters(doctorId, date, status)
+                .stream()
+                .map(this::mapToDetailsResponse)
+                .toList();
+    }
+
+
+
+    // Add this method inside your AppointmentService class
+    @Transactional(readOnly = true)
+    public List<AppointmentDetailsResponse> getAppointmentsForPatient(
+            Long patientId,
+            LocalDate date,
+            String status,
+            Boolean today
+    ) {
+        // If 'today' is true, override the date parameter with the current date
+        if (Boolean.TRUE.equals(today)) {
+            date = LocalDate.now();
+        }
+
+        // Fetch and map the results
+        return appointmentRepository.findPatientAppointmentsWithFilters(patientId, date, status)
+                .stream()
+                .map(this::mapToDetailsResponse)
+                .toList();
     }
 
     private String generateAppointmentNumber() {

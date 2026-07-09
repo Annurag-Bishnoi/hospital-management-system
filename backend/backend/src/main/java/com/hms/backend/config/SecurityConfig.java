@@ -27,6 +27,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/patients/**").permitAll()
                         .requestMatchers("/api/doctors/**").permitAll()
                         .requestMatchers("/api/appointments/**").permitAll()
+                        .requestMatchers("/api/visits/**").permitAll()
+                        .requestMatchers("/api/vitals", "/api/vitals/**").permitAll()
+                        .requestMatchers("/api/medications/**").permitAll()
+                        .requestMatchers("/api/ciel/**").permitAll()
+                        .requestMatchers("/api/prescriptions/**").permitAll()
                         .requestMatchers("/", "/index.html", "/static/**").permitAll()
                         .anyRequest().authenticated()
                 );
