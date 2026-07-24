@@ -13,6 +13,7 @@ export interface AuthUser {
   username?: string;
   fullName?: string;
   role?: Role | string;
+  token?: string;
 }
 
 export interface LoginRequest {

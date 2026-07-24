@@ -18,6 +18,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.hms.backend.auth.util.JwtUtil jwtUtil;
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
@@ -54,6 +55,8 @@ public class AuthService {
                 .getRole()
                 .getRoleCode();
 
+        String token = jwtUtil.generateToken(user.getUsername(), roleCode);
+
         return LoginResponse.builder()
                 .success(true)
                 .message("Login successful")
@@ -61,6 +64,7 @@ public class AuthService {
                 .username(user.getUsername())
                 .fullName(user.getFullName())
                 .role(roleCode)
+                .token(token)
                 .build();
     }
 }
