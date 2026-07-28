@@ -137,7 +137,28 @@ public class PharmacyService {
     }
 
     public List<Prescription> getPendingPrescriptions() {
-        return prescriptionRepository.findByStatus("CREATED");
+        List<Prescription> pending = prescriptionRepository.findByStatus("CREATED");
+        for (Prescription p : pending) {
+            for (com.hms.backend.medication.entity.Medication m : p.getMedications()) {
+                InventoryItem item = inventoryItemRepository.findByCielConceptId(m.getMedicationCode()).orElse(null);
+                if (item != null) {
+                    double mockPrice = 15.50 + (item.getMedicineName().length() * 2);
+                    java.math.BigDecimal price = java.math.BigDecimal.valueOf(mockPrice);
+                    m.setUnitPrice(price);
+                    try {
+                        int qty = Integer.parseInt(m.getQuantity() != null ? m.getQuantity() : "1");
+                        m.setTotalPrice(price.multiply(java.math.BigDecimal.valueOf(qty)));
+                    } catch (NumberFormatException e) {
+                        m.setTotalPrice(price);
+                    }
+                } else {
+                    // Fallback to 0 if not found
+                    m.setUnitPrice(java.math.BigDecimal.ZERO);
+                    m.setTotalPrice(java.math.BigDecimal.ZERO);
+                }
+            }
+        }
+        return pending;
     }
 
     @Transactional

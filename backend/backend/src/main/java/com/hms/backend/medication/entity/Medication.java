@@ -43,4 +43,10 @@ public class Medication {
 
     @Column(length = 255)
     private String instructions;
+
+    @Transient
+    private java.math.BigDecimal unitPrice;
+
+    @Transient
+    private java.math.BigDecimal totalPrice;
 }

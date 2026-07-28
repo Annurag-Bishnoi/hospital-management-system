@@ -1,6 +1,8 @@
 package com.hms.backend.visits.controller;
 
 import com.hms.backend.visits.dto.LabResultRequest;
+import com.hms.backend.appointments.repository.AppointmentRepository;
+import com.hms.backend.appointments.entity.Appointment;
 import com.hms.backend.visits.dto.LabTestResponse;
 import com.hms.backend.visits.entity.Visit;
 import com.hms.backend.visits.entity.VisitLabTest;
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
 public class LabController {
 
     private final VisitLabTestRepository visitLabTestRepository;
+    private final AppointmentRepository appointmentRepository;
 
     /** All lab tests, newest first */
     @GetMapping("/tests")
@@ -110,8 +113,24 @@ public class LabController {
                 throw new RuntimeException("Could not store file. Please try again!", ex);
             }
         }
+        
+        test = visitLabTestRepository.save(test);
 
-        return ResponseEntity.ok(toResponse(visitLabTestRepository.save(test)));
+        // Check if all lab tests for this visit are completed
+        Visit visit = test.getVisit();
+        List<VisitLabTest> allTestsForVisit = visitLabTestRepository.findByVisitVisitId(visit.getVisitId());
+        boolean allCompleted = allTestsForVisit.stream()
+                .allMatch(t -> "COMPLETED".equalsIgnoreCase(t.getStatus()));
+                
+        if (allCompleted) {
+            Appointment appointment = visit.getAppointment();
+            if ("WAITING_FOR_LABS".equalsIgnoreCase(appointment.getStatus())) {
+                appointment.setStatus("READY_FOR_DOCTOR");
+                appointmentRepository.save(appointment);
+            }
+        }
+
+        return ResponseEntity.ok(toResponse(test));
     }
 
     /** Cancel a test */
