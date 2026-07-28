@@ -11,4 +11,6 @@ public class EncounterRequest {
     private String diagnosisCode;
     private String notes;
     private java.util.List<com.hms.backend.medication.dto.MedicationDto> medications;
+    private java.util.List<LabTestDto> labTests;
+    private String status;
 }

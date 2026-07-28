@@ -3,6 +3,7 @@ package com.hms.backend.patients.controller;
 import com.hms.backend.patients.dto.PatientRegisterRequest;
 import com.hms.backend.patients.dto.PatientStatusRequest;
 import com.hms.backend.patients.dto.PatientUpdateRequest;
+import com.hms.backend.patients.dto.PatientAllergyRequest;
 import com.hms.backend.patients.service.PatientService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,15 @@ public class PatientController {
         }
     }
 
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getPatientByUserId(@PathVariable Long userId) {
+        try {
+            return ResponseEntity.ok(patientService.getPatientByUserId(userId));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        }
+    }
+
     @GetMapping("/search")
     public ResponseEntity<?> searchPatients(@RequestParam String keyword) {
         return ResponseEntity.ok(patientService.searchPatients(keyword));
@@ -67,6 +77,27 @@ public class PatientController {
     ) {
         try {
             return ResponseEntity.ok(patientService.updatePatientStatus(patientId, request));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @PostMapping("/{patientId}/reset-credentials")
+    public ResponseEntity<?> resetCredentials(@PathVariable Long patientId) {
+        try {
+            return ResponseEntity.ok(patientService.resetCredentials(patientId));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @PostMapping("/{patientId}/allergies")
+    public ResponseEntity<?> addAllergy(
+            @PathVariable Long patientId,
+            @Valid @RequestBody PatientAllergyRequest request
+    ) {
+        try {
+            return ResponseEntity.ok(patientService.addAllergyToPatient(patientId, request));
         } catch (RuntimeException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
         }

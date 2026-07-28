@@ -34,6 +34,13 @@ public class Doctor {
 
     private String email;
 
+    private String qualifications;
+
+    private String specialization;
+
+    @Column(name = "consultation_fee")
+    private Double consultationFee;
+
     private Integer experience;
 
     private Boolean active;

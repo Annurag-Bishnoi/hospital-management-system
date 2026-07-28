@@ -19,6 +19,10 @@ public class AppointmentDetailsResponse {
     private LocalDate appointmentDate;
     private LocalTime appointmentTime;
     private String reasonForVisit;
+    private String consultationType;
+    private Double consultationFee;
+    private String paymentStatus;
+    private String notes;
     private String status;
 
 

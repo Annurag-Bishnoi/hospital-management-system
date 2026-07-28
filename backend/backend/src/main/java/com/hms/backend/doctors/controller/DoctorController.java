@@ -1,6 +1,7 @@
 package com.hms.backend.doctors.controller;
 
 import com.hms.backend.doctors.dto.DoctorRegisterRequest;
+import com.hms.backend.doctors.dto.DoctorStatusRequest;
 import com.hms.backend.doctors.dto.DoctorUpdateRequest;
 import com.hms.backend.doctors.service.DoctorService;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,15 @@ public class DoctorController {
         );
     }
 
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getDoctorByUserId(
+            @PathVariable Long userId
+    ) {
+        return ResponseEntity.ok(
+                doctorService.getDoctorByUserId(userId)
+        );
+    }
+
     @GetMapping("/search")
     public ResponseEntity<?> searchDoctors(
             @RequestParam String keyword
@@ -60,5 +70,31 @@ public class DoctorController {
                         request
                 )
         );
+    }
+
+    @PatchMapping("/{doctorId}/status")
+    public ResponseEntity<?> updateDoctorStatus(
+            @PathVariable Long doctorId,
+            @RequestBody DoctorStatusRequest request
+    ) {
+        return ResponseEntity.ok(
+                doctorService.updateDoctorStatus(
+                        doctorId,
+                        request
+                )
+        );
+    }
+
+    @PostMapping("/{doctorId}/reset-credentials")
+    public ResponseEntity<?> resetCredentials(
+            @PathVariable Long doctorId
+    ) {
+        try {
+            return ResponseEntity.ok(
+                    doctorService.resetCredentials(doctorId)
+            );
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
     }
 }

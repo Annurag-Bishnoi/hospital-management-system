@@ -54,6 +54,15 @@ public class AppointmentController {
         );
     }
 
+    @PutMapping("/{appointmentId}/pay")
+    public ResponseEntity<AppointmentResponse> markPaymentPaid(
+            @PathVariable Long appointmentId
+    ) {
+        return ResponseEntity.ok(
+                appointmentService.markPaymentPaid(appointmentId)
+        );
+    }
+
     @PutMapping("/{appointmentId}/reschedule")
     public ResponseEntity<AppointmentResponse> rescheduleAppointment(
             @PathVariable Long appointmentId,

@@ -26,8 +26,24 @@ public class PatientResponse {
     private String email;
     private String address;
 
+    private Long insuranceProviderId;
+    private String insuranceProviderName;
+    private String policyNumber;
+
     private String emergencyContactName;
     private String emergencyContactPhone;
 
     private Boolean active;
+
+    private java.util.List<AllergyDto> allergies;
+
+    @Getter
+    @Setter
+    @Builder
+    public static class AllergyDto {
+        private Long id;
+        private String allergyName;
+        private String severity;
+        private String notes;
+    }
 }

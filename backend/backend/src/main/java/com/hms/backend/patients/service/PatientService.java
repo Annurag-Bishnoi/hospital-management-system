@@ -13,6 +13,13 @@ import com.hms.backend.entity.UserRole;
 import com.hms.backend.repository.RoleRepository;
 import com.hms.backend.repository.UserRepository;
 import com.hms.backend.repository.UserRoleRepository;
+import com.hms.backend.patients.entity.InsuranceProvider;
+import com.hms.backend.patients.entity.PatientAllergy;
+import com.hms.backend.patients.repository.InsuranceProviderRepository;
+import com.hms.backend.patients.dto.PatientResponse.AllergyDto;
+import com.hms.backend.patients.dto.PatientAllergyRequest;
+import com.hms.backend.entity.MedicalConcept;
+import com.hms.backend.repository.MedicalConceptRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,6 +36,8 @@ public class PatientService {
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final InsuranceProviderRepository insuranceProviderRepository;
+    private final MedicalConceptRepository medicalConceptRepository;
 
     @Transactional
     public PatientRegistrationResponse registerPatient(PatientRegisterRequest request) {
@@ -48,6 +57,13 @@ public class PatientService {
                 .emergencyContactPhone(normalize(request.getEmergencyContactPhone()))
                 .active(true)
                 .build();
+
+        if (request.getInsuranceProviderId() != null) {
+            InsuranceProvider provider = insuranceProviderRepository.findById(request.getInsuranceProviderId())
+                    .orElseThrow(() -> new RuntimeException("Insurance Provider not found"));
+            patient.setInsuranceProvider(provider);
+            patient.setPolicyNumber(request.getPolicyNumber());
+        }
 
         Patient savedPatient = patientRepository.save(patient);
 
@@ -124,6 +140,13 @@ public class PatientService {
     }
 
     @Transactional(readOnly = true)
+    public PatientResponse getPatientByUserId(Long userId) {
+        Patient patient = patientRepository.findByUserUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Patient not found for userId: " + userId));
+        return mapToResponse(patient);
+    }
+
+    @Transactional(readOnly = true)
     public List<PatientResponse> searchPatients(String keyword) {
 
         if (isBlank(keyword)) {
@@ -157,6 +180,16 @@ public class PatientService {
         patient.setEmergencyContactName(request.getEmergencyContactName());
         patient.setEmergencyContactPhone(normalize(request.getEmergencyContactPhone()));
 
+        if (request.getInsuranceProviderId() != null) {
+            InsuranceProvider provider = insuranceProviderRepository.findById(request.getInsuranceProviderId())
+                    .orElseThrow(() -> new RuntimeException("Insurance Provider not found"));
+            patient.setInsuranceProvider(provider);
+            patient.setPolicyNumber(request.getPolicyNumber());
+        } else {
+            patient.setInsuranceProvider(null);
+            patient.setPolicyNumber(null);
+        }
+
         Patient savedPatient = patientRepository.save(patient);
 
         return mapToResponse(savedPatient);
@@ -177,6 +210,53 @@ public class PatientService {
         Patient savedPatient = patientRepository.save(patient);
 
         return mapToResponse(savedPatient);
+    }
+
+    @Transactional
+    public PatientResponse addAllergyToPatient(Long patientId, PatientAllergyRequest request) {
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new RuntimeException("Patient not found"));
+        // check if already exists
+        boolean exists = patient.getAllergies() != null && patient.getAllergies().stream()
+                .anyMatch(a -> a.getAllergyName().equalsIgnoreCase(request.getAllergyName()));
+        if (exists) {
+            throw new RuntimeException("Patient already has this allergy documented.");
+        }
+
+        PatientAllergy allergy = PatientAllergy.builder()
+                .patient(patient)
+                .allergyName(request.getAllergyName())
+                .severity(request.getSeverity())
+                .notes(request.getNotes())
+                .recordedAt(java.time.LocalDateTime.now())
+                .build();
+
+        patient.addAllergy(allergy);
+        Patient saved = patientRepository.save(patient);
+        return mapToResponse(saved);
+    }
+
+    @Transactional
+    public PatientRegistrationResponse resetCredentials(Long patientId) {
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new RuntimeException("Patient not found"));
+
+        User user = patient.getUser();
+        if (user == null) {
+            throw new RuntimeException("Patient does not have a user account");
+        }
+
+        String newPassword = generatePassword(patient.getPatientId());
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        return PatientRegistrationResponse.builder()
+                .message("Credentials reset successfully")
+                .patient(mapToResponse(patient))
+                .username(user.getUsername())
+                .temporaryPassword(newPassword)
+                .credentialsAutoGenerated(true)
+                .build();
     }
 
     private String generatePatientCode(Long patientId) {
@@ -218,6 +298,15 @@ public class PatientService {
                 .address(patient.getAddress())
                 .emergencyContactName(patient.getEmergencyContactName())
                 .emergencyContactPhone(patient.getEmergencyContactPhone())
+                .insuranceProviderId(patient.getInsuranceProvider() != null ? patient.getInsuranceProvider().getId() : null)
+                .insuranceProviderName(patient.getInsuranceProvider() != null ? patient.getInsuranceProvider().getProviderName() : null)
+                .policyNumber(patient.getPolicyNumber())
+                .allergies(patient.getAllergies() != null ? patient.getAllergies().stream().map(a -> AllergyDto.builder()
+                        .id(a.getId())
+                        .allergyName(a.getAllergyName())
+                        .severity(a.getSeverity())
+                        .notes(a.getNotes())
+                        .build()).toList() : new java.util.ArrayList<>())
                 .active(patient.getActive())
                 .build();
     }

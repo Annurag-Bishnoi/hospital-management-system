@@ -47,6 +47,10 @@ public class CielController {
                     results.add(concept);
                 }
             }
+        } else if ("test".equalsIgnoreCase(type)) {
+            // Search lab tests
+            results = medicalConceptRepository
+                    .findByConceptClassAndConceptNameContainingIgnoreCase("Test", searchTerm);
         }
 
         // Limit results to 50 for quick rendering

@@ -22,4 +22,6 @@ public class VisitResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private java.util.List<VisitVitalResponse> vitals;
+    private java.util.List<com.hms.backend.medication.dto.MedicationDto> medications;
+    private java.util.List<VisitLabTestDto> labTests;
 }

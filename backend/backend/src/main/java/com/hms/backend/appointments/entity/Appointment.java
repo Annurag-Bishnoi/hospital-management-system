@@ -42,6 +42,15 @@ public class Appointment {
     @Column(nullable = false)
     private LocalTime appointmentTime;
 
+    @Column(length = 50)
+    private String consultationType;
+
+    @Column(name = "consultation_fee")
+    private Double consultationFee;
+
+    @Column(name = "payment_status", length = 30)
+    private String paymentStatus;
+
     @Column(length = 500)
     private String reasonForVisit;
 

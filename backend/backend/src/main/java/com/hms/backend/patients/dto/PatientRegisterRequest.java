@@ -34,4 +34,8 @@ public class PatientRegisterRequest {
     private String emergencyContactName;
 
     private String emergencyContactPhone;
+
+    private Long insuranceProviderId;
+
+    private String policyNumber;
 }

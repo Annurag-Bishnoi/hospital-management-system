@@ -15,6 +15,12 @@ public class DoctorRegisterRequest {
 
     private Integer experience;
 
+    private String qualifications;
+
+    private String specialization;
+
+    private Double consultationFee;
+
     private String username;
 
     private String password;

@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "patients")
@@ -46,6 +47,16 @@ public class Patient {
     @Column(length = 100)
     private String email;
 
+    @Column(name = "primary_care_physician", length = 255)
+    private String primaryCarePhysician;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "insurance_provider_id")
+    private InsuranceProvider insuranceProvider;
+
+    @Column(name = "policy_number", length = 50)
+    private String policyNumber;
+
     @Column(length = 255)
     private String address;
 
@@ -54,6 +65,17 @@ public class Patient {
 
     @Column(name = "emergency_contact_phone", length = 15)
     private String emergencyContactPhone;
+
+    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<PatientAllergy> allergies;
+
+    public void addAllergy(PatientAllergy allergy) {
+        if (allergies == null) {
+            allergies = new java.util.ArrayList<>();
+        }
+        allergies.add(allergy);
+        allergy.setPatient(this);
+    }
 
     @Builder.Default
     @Column(name = "is_active")

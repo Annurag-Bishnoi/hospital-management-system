@@ -13,13 +13,19 @@ import com.hms.backend.visits.dto.VisitResponse;
 import com.hms.backend.visits.entity.Visit;
 import com.hms.backend.visits.repository.VisitRepository;
 import com.hms.backend.visits.repository.VisitVitalRepository;
+import com.hms.backend.visits.repository.VisitLabTestRepository;
+import com.hms.backend.billing.service.BillingService;
+import com.hms.backend.billing.dto.BillRequest;
+import com.hms.backend.billing.dto.BillItemRequest;
 import com.hms.backend.visits.service.VisitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +38,8 @@ public class VisitServiceImpl implements VisitService {
     private final VisitVitalRepository visitVitalRepository;
     private final com.hms.backend.repository.MedicalConceptRepository medicalConceptRepository;
     private final com.hms.backend.prescription.repository.PrescriptionRepository prescriptionRepository;
+    private final com.hms.backend.visits.repository.VisitLabTestRepository visitLabTestRepository;
+    private final BillingService billingService;
 
     @Override
     @Transactional
@@ -152,10 +160,12 @@ public class VisitServiceImpl implements VisitService {
         if (request.getDiagnosis() != null) visit.setDiagnosis(request.getDiagnosis());
         if (request.getDiagnosisCode() != null) visit.setDiagnosisCode(request.getDiagnosisCode());
         if (request.getNotes() != null) visit.setNotes(request.getNotes());
-        visit.setStatus("COMPLETED");
+        
+        String newStatus = request.getStatus() != null ? request.getStatus() : "COMPLETED";
+        visit.setStatus(newStatus);
 
         Appointment appointment = visit.getAppointment();
-        appointment.setStatus("COMPLETED");
+        appointment.setStatus(newStatus);
         appointmentRepository.save(appointment);
 
         // Atomic Prescription mapping
@@ -203,6 +213,62 @@ public class VisitServiceImpl implements VisitService {
             prescription.setMedications(medications);
             prescriptionRepository.save(prescription);
         }
+
+        // Atomic Lab Test mapping
+        if (request.getLabTests() != null && !request.getLabTests().isEmpty()) {
+            java.util.List<com.hms.backend.visits.entity.VisitLabTest> labTests = request.getLabTests().stream().map(testDto -> {
+                String testName = testDto.getTestName();
+                if (testName == null || testName.trim().isEmpty()) {
+                    throw new IllegalArgumentException("Lab Test name cannot be empty");
+                }
+                
+                return com.hms.backend.visits.entity.VisitLabTest.builder()
+                        .visit(visit)
+                        .patientId(visit.getPatient().getPatientId())
+                        .testCode(testDto.getTestCode())
+                        .testName(testName.trim())
+                        .status("PENDING")
+                        .paymentStatus("PENDING")
+                        .build();
+            }).collect(Collectors.toList());
+            
+            visitLabTestRepository.saveAll(labTests);
+
+            // Generate LAB bill
+            BillRequest labBillReq = new BillRequest();
+            labBillReq.setPatientId(visit.getPatient().getPatientId());
+            labBillReq.setPatientName(visit.getPatient().getFullName());
+            labBillReq.setDepartment("LABORATORY");
+            labBillReq.setGeneratedBy("System (Dr. " + visit.getDoctor().getFullName() + ")");
+            
+            List<BillItemRequest> labItems = new ArrayList<>();
+            for (com.hms.backend.visits.entity.VisitLabTest lt : labTests) {
+                BillItemRequest req = new BillItemRequest();
+                req.setDescription("Lab Test: " + lt.getTestName());
+                req.setQuantity(1);
+                req.setUnitPrice(BigDecimal.valueOf(150.0 + (lt.getTestName().length() * 5))); // Mock pricing logic
+                labItems.add(req);
+            }
+            labBillReq.setItems(labItems);
+            billingService.generateBill(labBillReq);
+        }
+
+        // Generate CONSULTATION bill
+        BillRequest consultBillReq = new BillRequest();
+        consultBillReq.setPatientId(visit.getPatient().getPatientId());
+        consultBillReq.setPatientName(visit.getPatient().getFullName());
+        consultBillReq.setDepartment("CONSULTATION");
+        consultBillReq.setGeneratedBy("System (Dr. " + visit.getDoctor().getFullName() + ")");
+        
+        List<BillItemRequest> consultItems = new ArrayList<>();
+        BillItemRequest consultItem = new BillItemRequest();
+        consultItem.setDescription("Doctor Consultation Fee");
+        consultItem.setQuantity(1);
+        consultItem.setUnitPrice(BigDecimal.valueOf(500.00)); // Standard fee
+        consultItems.add(consultItem);
+        
+        consultBillReq.setItems(consultItems);
+        billingService.generateBill(consultBillReq);
 
         return mapToResponse(visitRepository.save(visit));
     }
@@ -270,6 +336,43 @@ public class VisitServiceImpl implements VisitService {
                     .build();
         }).collect(Collectors.toList());
 
+        // Fetch medications
+        List<com.hms.backend.medication.dto.MedicationDto> medications = new java.util.ArrayList<>();
+        if (visit.getAppointment() != null) {
+            prescriptionRepository.findByAppointment_AppointmentId(visit.getAppointment().getAppointmentId())
+                .ifPresent(prescription -> {
+                    if (prescription.getMedications() != null) {
+                        medications.addAll(prescription.getMedications().stream().map(med -> 
+                            com.hms.backend.medication.dto.MedicationDto.builder()
+                                .medicineName(med.getMedicineName())
+                                .medicationCode(med.getMedicationCode())
+                                .dosage(med.getDosage())
+                                .frequency(med.getFrequency())
+                                .duration(med.getDuration())
+                                .quantity(med.getQuantity())
+                                .instructions(med.getInstructions())
+                                .build()
+                        ).collect(Collectors.toList()));
+                    }
+                });
+        }
+
+        // Fetch lab tests
+        List<com.hms.backend.visits.entity.VisitLabTest> rawLabTests = visitLabTestRepository.findByVisitVisitId(visit.getVisitId());
+        List<com.hms.backend.visits.dto.VisitLabTestDto> labTests = rawLabTests.stream().map(test ->
+            com.hms.backend.visits.dto.VisitLabTestDto.builder()
+                .testId(test.getTestId())
+                .testCode(test.getTestCode())
+                .testName(test.getTestName())
+                .status(test.getStatus())
+                .paymentStatus(test.getPaymentStatus())
+                .referenceRange(test.getReferenceRange())
+                .resultValue(test.getResultValue())
+                .recordedAt(test.getRecordedAt())
+                .documentUrl(test.getDocumentUrl())
+                .build()
+        ).collect(Collectors.toList());
+
         return VisitResponse.builder()
                 .visitId(visit.getVisitId())
                 .appointmentId(visit.getAppointment().getAppointmentId())
@@ -285,6 +388,8 @@ public class VisitServiceImpl implements VisitService {
                 .createdAt(visit.getCreatedAt())
                 .updatedAt(visit.getUpdatedAt())
                 .vitals(mappedVitals)
+                .medications(medications)
+                .labTests(labTests)
                 .build();
     }
 }

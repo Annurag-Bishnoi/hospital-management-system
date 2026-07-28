@@ -2,6 +2,19 @@ package com.hms.backend.config;
 
 import com.hms.backend.entity.MedicalConcept;
 import com.hms.backend.repository.MedicalConceptRepository;
+import com.hms.backend.entity.User;
+import com.hms.backend.entity.Role;
+import com.hms.backend.entity.UserRole;
+import com.hms.backend.repository.UserRepository;
+import com.hms.backend.repository.RoleRepository;
+import com.hms.backend.repository.UserRoleRepository;
+import com.hms.backend.ipd.repository.WardRepository;
+import com.hms.backend.ipd.repository.BedRepository;
+import com.hms.backend.ipd.entity.Ward;
+import com.hms.backend.ipd.entity.Bed;
+import com.hms.backend.patients.entity.InsuranceProvider;
+import com.hms.backend.patients.repository.InsuranceProviderRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +22,7 @@ import org.springframework.core.io.ClassPathResource;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +30,15 @@ import java.util.List;
 public class DatabaseSeeder {
 
     @Bean
-    CommandLineRunner initDatabase(MedicalConceptRepository repository) {
+    CommandLineRunner initDatabase(
+            MedicalConceptRepository repository,
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            UserRoleRepository userRoleRepository,
+            WardRepository wardRepository,
+            BedRepository bedRepository,
+            InsuranceProviderRepository insuranceRepo,
+            PasswordEncoder passwordEncoder) {
         return args -> {
             boolean hasDiagnosis = repository.findAll().stream().anyMatch(c -> "Diagnosis".equals(c.getConceptClass()));
             // Check if database is already fully seeded so we don't duplicate data on restart
@@ -65,7 +87,8 @@ public class DatabaseSeeder {
 
                     // Save everything to your database
                     repository.saveAll(conceptsToSave);
-                    System.out.println("Successfully seeded " + conceptsToSave.size() + " CIEL concepts into the database!");
+                    System.out.println("=== ROLES ===");
+                    roleRepository.findAll().forEach(r -> System.out.println(r.getRoleName()));
 
                 } catch (Exception e) {
                     System.err.println("Error reading the JSON file: " + e.getMessage());
@@ -73,6 +96,73 @@ public class DatabaseSeeder {
             } else {
                 System.out.println("CIEL Concepts (including Diagnosis) are already loaded in the database.");
             }
+
+            // Seed Users for All Roles
+            String[][] rolesAndUsers = {
+                {"ADMIN", "Administrator", "admin01", "Super Admin", "admin@hospital.com"},
+                {"DOCTOR", "Doctor", "doctor01", "Dr. John Doe", "doctor@hospital.com"},
+                {"RECEPTIONIST", "Receptionist", "reception01", "Front Desk", "reception@hospital.com"},
+                {"PHARMACIST", "Pharmacist", "pharma01", "Pharmacy Lead", "pharma@hospital.com"},
+                {"BILLING", "Billing Staff", "billing01", "Billing Dept", "billing@hospital.com"},
+                {"LABORATORY", "Lab Technician", "lab01", "Lab Tech", "lab@hospital.com"},
+                {"PATIENT", "Patient", "patient01", "Test Patient", "patient@hospital.com"}
+            };
+
+            int phoneCounter = 1;
+            for (String[] data : rolesAndUsers) {
+                String roleCode = data[0];
+                String roleName = data[1];
+                String username = data[2];
+                String fullName = data[3];
+                String email = data[4];
+
+                Role role = roleRepository.findByRoleCode(roleCode)
+                    .orElseGet(() -> {
+                        Role r = new Role();
+                        r.setRoleCode(roleCode);
+                        r.setRoleName(roleName);
+                        return roleRepository.save(r);
+                    });
+
+                if (userRepository.findByUsername(username).isEmpty()) {
+                    System.out.println("Seeding initial " + roleCode + " user: " + username);
+                    User user = new User();
+                    user.setUsername(username);
+                    user.setEmail(email);
+                    user.setPasswordHash(passwordEncoder.encode("Anurag@123"));
+                    user.setFullName(fullName);
+                    user.setPhone("999000000" + phoneCounter); // ensure unique phone
+                    user.setActive(true);
+                    userRepository.save(user);
+
+                    UserRole ur = new UserRole();
+                    ur.setUser(user);
+                    ur.setRole(role);
+                    userRoleRepository.save(ur);
+                }
+                phoneCounter++;
+            }
+            System.out.println("Default users seeded successfully.");
+            
+            if (wardRepository.count() == 0) {
+                System.out.println("Seeding IPD Wards and Beds...");
+                Ward gw = wardRepository.save(Ward.builder().name("General Ward").capacity(10).dailyCharge(BigDecimal.valueOf(1000.0)).build());
+                Ward icu = wardRepository.save(Ward.builder().name("Intensive Care Unit (ICU)").capacity(5).dailyCharge(BigDecimal.valueOf(5000.0)).build());
+                Ward vip = wardRepository.save(Ward.builder().name("VIP Suite").capacity(2).dailyCharge(BigDecimal.valueOf(10000.0)).build());
+
+                for (int i = 1; i <= 10; i++) bedRepository.save(Bed.builder().bedNumber("GW-" + i).ward(gw).status("AVAILABLE").build());
+                for (int i = 1; i <= 5; i++) bedRepository.save(Bed.builder().bedNumber("ICU-" + i).ward(icu).status("AVAILABLE").build());
+                for (int i = 1; i <= 2; i++) bedRepository.save(Bed.builder().bedNumber("VIP-" + i).ward(vip).status("AVAILABLE").build());
+                for (int i = 1; i <= 2; i++) bedRepository.save(Bed.builder().bedNumber("VIP-" + i).ward(vip).status("AVAILABLE").build());
+            }
+
+            if (insuranceRepo.count() == 0) {
+                System.out.println("Seeding Insurance Providers...");
+                insuranceRepo.save(InsuranceProvider.builder().providerName("HDFC Ergo Health").standardCoveragePercentage(80.0).build());
+                insuranceRepo.save(InsuranceProvider.builder().providerName("Star Health Insurance").standardCoveragePercentage(100.0).build());
+                insuranceRepo.save(InsuranceProvider.builder().providerName("ICICI Lombard").standardCoveragePercentage(90.0).build());
+            }
+            
         };
     }
 }

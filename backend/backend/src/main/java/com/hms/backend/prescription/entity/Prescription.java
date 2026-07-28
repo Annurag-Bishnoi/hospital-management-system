@@ -53,6 +53,10 @@ public class Prescription {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false, length = 50)
+    @Builder.Default
+    private String status = "CREATED";
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

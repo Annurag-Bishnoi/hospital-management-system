@@ -14,4 +14,10 @@ public class DoctorUpdateRequest {
     private String email;
 
     private Integer experience;
+
+    private String qualifications;
+
+    private String specialization;
+
+    private Double consultationFee;
 }

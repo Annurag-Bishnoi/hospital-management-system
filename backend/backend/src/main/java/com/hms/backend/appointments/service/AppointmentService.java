@@ -53,6 +53,10 @@ public class AppointmentService {
                 .appointmentDate(request.getAppointmentDate())
                 .appointmentTime(request.getAppointmentTime())
                 .reasonForVisit(request.getReasonForVisit())
+                .consultationType(request.getConsultationType())
+                .notes(request.getNotes())
+                .consultationFee(doctor.getConsultationFee() != null ? doctor.getConsultationFee() : 0.0)
+                .paymentStatus("PENDING")
                 .status("SCHEDULED")
                 .build();
 
@@ -147,6 +151,21 @@ public class AppointmentService {
                 .build();
     }
 
+    @Transactional
+    public AppointmentResponse markPaymentPaid(Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + appointmentId));
+        appointment.setPaymentStatus("PAID");
+        Appointment updated = appointmentRepository.save(appointment);
+        return AppointmentResponse.builder()
+                .appointmentId(updated.getAppointmentId())
+                .appointmentNumber(updated.getAppointmentNumber())
+                .tokenNumber(updated.getTokenNumber())
+                .status(updated.getStatus())
+                .message("Payment marked as PAID successfully")
+                .build();
+    }
+
     @Transactional(readOnly = true)
     public List<AppointmentDetailsResponse> getReadyAppointments() {
         return appointmentRepository.findAllAppointmentsWithDetails().stream()
@@ -177,6 +196,10 @@ public class AppointmentService {
                 .appointmentDate(appointment.getAppointmentDate())
                 .appointmentTime(appointment.getAppointmentTime())
                 .reasonForVisit(appointment.getReasonForVisit())
+                .consultationType(appointment.getConsultationType())
+                .consultationFee(appointment.getConsultationFee())
+                .paymentStatus(appointment.getPaymentStatus())
+                .notes(appointment.getNotes())
                 .status(appointment.getStatus())
 
                 .patientId(appointment.getPatient() != null

@@ -19,4 +19,8 @@ public class AppointmentCreateRequest {
     private LocalTime appointmentTime;
 
     private String reasonForVisit;
+
+    private String consultationType;
+
+    private String notes;
 }

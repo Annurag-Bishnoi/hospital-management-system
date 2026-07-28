@@ -25,5 +25,11 @@ public class DoctorResponse {
 
     private Integer experience;
 
+    private String qualifications;
+
+    private String specialization;
+
+    private Double consultationFee;
+
     private Boolean active;
 }
