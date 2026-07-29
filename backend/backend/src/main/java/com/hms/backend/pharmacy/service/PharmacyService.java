@@ -161,6 +161,10 @@ public class PharmacyService {
         return pending;
     }
 
+    public List<Prescription> getDispensedPrescriptions() {
+        return prescriptionRepository.findByStatus("DISPENSED");
+    }
+
     @Transactional
     public DispenseResponse dispenseMedicine(DispenseRequest request, String currentUser) {
         Prescription prescription = prescriptionRepository.findById(request.getPrescriptionId())

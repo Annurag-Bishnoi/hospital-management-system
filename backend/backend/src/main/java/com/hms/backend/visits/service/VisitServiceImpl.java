@@ -210,47 +210,61 @@ public class VisitServiceImpl implements VisitService {
                         .build()
             ).collect(Collectors.toList());
             
-            prescription.setMedications(medications);
+            if (prescription.getMedications() != null) {
+                prescription.getMedications().clear();
+                prescription.getMedications().addAll(medications);
+            } else {
+                prescription.setMedications(medications);
+            }
             prescriptionRepository.save(prescription);
         }
 
         // Atomic Lab Test mapping
         if (request.getLabTests() != null && !request.getLabTests().isEmpty()) {
-            java.util.List<com.hms.backend.visits.entity.VisitLabTest> labTests = request.getLabTests().stream().map(testDto -> {
-                String testName = testDto.getTestName();
-                if (testName == null || testName.trim().isEmpty()) {
-                    throw new IllegalArgumentException("Lab Test name cannot be empty");
-                }
-                
-                return com.hms.backend.visits.entity.VisitLabTest.builder()
-                        .visit(visit)
-                        .patientId(visit.getPatient().getPatientId())
-                        .testCode(testDto.getTestCode())
-                        .testName(testName.trim())
-                        .status("PENDING")
-                        .paymentStatus("PENDING")
-                        .build();
-            }).collect(Collectors.toList());
-            
-            visitLabTestRepository.saveAll(labTests);
+            java.util.List<com.hms.backend.visits.entity.VisitLabTest> existingTests = visitLabTestRepository.findByVisitVisitId(visit.getVisitId());
+            java.util.Set<String> existingTestCodes = existingTests.stream()
+                .map(com.hms.backend.visits.entity.VisitLabTest::getTestCode)
+                .collect(Collectors.toSet());
 
-            // Generate LAB bill
-            BillRequest labBillReq = new BillRequest();
-            labBillReq.setPatientId(visit.getPatient().getPatientId());
-            labBillReq.setPatientName(visit.getPatient().getFullName());
-            labBillReq.setDepartment("LABORATORY");
-            labBillReq.setGeneratedBy("System (Dr. " + visit.getDoctor().getFullName() + ")");
+            java.util.List<com.hms.backend.visits.entity.VisitLabTest> newLabTests = request.getLabTests().stream()
+                .filter(testDto -> !existingTestCodes.contains(testDto.getTestCode()))
+                .map(testDto -> {
+                    String testName = testDto.getTestName();
+                    if (testName == null || testName.trim().isEmpty()) {
+                        throw new IllegalArgumentException("Lab Test name cannot be empty");
+                    }
+                    
+                    return com.hms.backend.visits.entity.VisitLabTest.builder()
+                            .visit(visit)
+                            .patientId(visit.getPatient().getPatientId())
+                            .testCode(testDto.getTestCode())
+                            .testName(testName.trim())
+                            .status("PENDING")
+                            .paymentStatus("PENDING")
+                            .build();
+                }).collect(Collectors.toList());
             
-            List<BillItemRequest> labItems = new ArrayList<>();
-            for (com.hms.backend.visits.entity.VisitLabTest lt : labTests) {
-                BillItemRequest req = new BillItemRequest();
-                req.setDescription("Lab Test: " + lt.getTestName());
-                req.setQuantity(1);
-                req.setUnitPrice(BigDecimal.valueOf(150.0 + (lt.getTestName().length() * 5))); // Mock pricing logic
-                labItems.add(req);
+            if (!newLabTests.isEmpty()) {
+                visitLabTestRepository.saveAll(newLabTests);
+
+                // Generate LAB bill
+                BillRequest labBillReq = new BillRequest();
+                labBillReq.setPatientId(visit.getPatient().getPatientId());
+                labBillReq.setPatientName(visit.getPatient().getFullName());
+                labBillReq.setDepartment("LABORATORY");
+                labBillReq.setGeneratedBy("System (Dr. " + visit.getDoctor().getFullName() + ")");
+                
+                List<BillItemRequest> labItems = new ArrayList<>();
+                for (com.hms.backend.visits.entity.VisitLabTest lt : newLabTests) {
+                    BillItemRequest req = new BillItemRequest();
+                    req.setDescription("Lab Test: " + lt.getTestName());
+                    req.setQuantity(1);
+                    req.setUnitPrice(BigDecimal.valueOf(150.0 + (lt.getTestName().length() * 5))); // Mock pricing logic
+                    labItems.add(req);
+                }
+                labBillReq.setItems(labItems);
+                billingService.generateBill(labBillReq);
             }
-            labBillReq.setItems(labItems);
-            billingService.generateBill(labBillReq);
         }
 
         // Generate CONSULTATION bill

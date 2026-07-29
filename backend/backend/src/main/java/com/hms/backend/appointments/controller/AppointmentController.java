@@ -119,9 +119,14 @@ public class AppointmentController {
 
     @GetMapping("/doctor/{doctorId}/queue")
     public ResponseEntity<List<AppointmentDetailsResponse>> getDoctorQueue(@PathVariable Long doctorId) {
-        return ResponseEntity.ok(
-                appointmentService.getAppointmentsForDoctor(doctorId, null, "READY_FOR_DOCTOR", false)
-        );
+        List<AppointmentDetailsResponse> inConsultation = appointmentService.getAppointmentsForDoctor(doctorId, null, "IN_CONSULTATION", false);
+        List<AppointmentDetailsResponse> ready = appointmentService.getAppointmentsForDoctor(doctorId, null, "READY_FOR_DOCTOR", false);
+        
+        List<AppointmentDetailsResponse> combined = new java.util.ArrayList<>();
+        combined.addAll(inConsultation);
+        combined.addAll(ready);
+        
+        return ResponseEntity.ok(combined);
     }
 
     /**

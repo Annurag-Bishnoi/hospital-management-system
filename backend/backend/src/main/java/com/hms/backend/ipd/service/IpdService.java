@@ -11,9 +11,11 @@ public interface IpdService {
     AdmissionResponse requestAdmission(AdmissionRequest request, String currentUser);
     AdmissionResponse assignBed(Long admissionId, AssignBedRequest request, String currentUser);
     AdmissionResponse dischargePatient(Long admissionId, DischargeRequest request, String currentUser);
+    AdmissionResponse cancelAdmission(Long admissionId, String currentUser);
     
     List<AdmissionResponse> getAdmissionsByStatus(String status);
     List<AdmissionResponse> getAdmissionsByDoctor(String currentUser);
+    List<AdmissionResponse> getAdmissionsByPatient(Long patientId);
     
     DailyRoundResponse addDailyRound(Long admissionId, DailyRoundRequest request, String currentUser);
     List<DailyRoundResponse> getDailyRounds(Long admissionId);

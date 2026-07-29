@@ -42,6 +42,11 @@ public class IpdController {
         return ResponseEntity.ok(ipdService.assignBed(id, request, authentication.getName()));
     }
 
+    @PutMapping("/admissions/{id}/cancel")
+    public ResponseEntity<AdmissionResponse> cancelAdmission(@PathVariable Long id, Authentication authentication) {
+        return ResponseEntity.ok(ipdService.cancelAdmission(id, authentication.getName()));
+    }
+
     @PutMapping("/admissions/{id}/discharge")
     public ResponseEntity<AdmissionResponse> dischargePatient(@PathVariable Long id, @RequestBody DischargeRequest request, Authentication authentication) {
         return ResponseEntity.ok(ipdService.dischargePatient(id, request, authentication.getName()));
@@ -64,6 +69,11 @@ public class IpdController {
     @GetMapping("/admissions/doctor")
     public ResponseEntity<List<AdmissionResponse>> getDoctorAdmissions(Authentication authentication) {
         return ResponseEntity.ok(ipdService.getAdmissionsByDoctor(authentication.getName()));
+    }
+
+    @GetMapping("/admissions/patient/{patientId}")
+    public ResponseEntity<List<AdmissionResponse>> getPatientAdmissions(@PathVariable Long patientId) {
+        return ResponseEntity.ok(ipdService.getAdmissionsByPatient(patientId));
     }
 
     @PostMapping("/admissions/{id}/rounds")

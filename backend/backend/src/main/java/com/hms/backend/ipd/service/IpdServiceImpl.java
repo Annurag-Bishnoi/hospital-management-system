@@ -10,6 +10,12 @@ import com.hms.backend.repository.UserRepository;
 import com.hms.backend.billing.service.BillingService;
 import com.hms.backend.billing.dto.BillRequest;
 import com.hms.backend.billing.dto.BillItemRequest;
+import com.hms.backend.visits.repository.VisitRepository;
+import com.hms.backend.appointments.repository.AppointmentRepository;
+import com.hms.backend.visits.entity.Visit;
+import com.hms.backend.appointments.entity.Appointment;
+import com.hms.backend.doctors.repository.DoctorRepository;
+import com.hms.backend.doctors.entity.Doctor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +39,9 @@ public class IpdServiceImpl implements IpdService {
     private final PatientRepository patientRepository;
     private final UserRepository userRepository;
     private final BillingService billingService;
+    private final VisitRepository visitRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final DoctorRepository doctorRepository;
 
     @Override
     public List<WardDto> getAllWards() {
@@ -71,12 +80,14 @@ public class IpdServiceImpl implements IpdService {
     public AdmissionResponse requestAdmission(AdmissionRequest request, String currentUser) {
         Patient patient = patientRepository.findById(request.getPatientId())
                 .orElseThrow(() -> new RuntimeException("Patient not found"));
-        User doctor = userRepository.findById(request.getAdmittingDoctorId())
+        
+        Doctor doctor = doctorRepository.findById(request.getAdmittingDoctorId())
                 .orElseThrow(() -> new RuntimeException("Doctor not found"));
+        User doctorUser = doctor.getUser();
 
         Admission admission = Admission.builder()
                 .patient(patient)
-                .admittingDoctor(doctor)
+                .admittingDoctor(doctorUser)
                 .admissionDate(LocalDateTime.now())
                 .status("REQUESTED")
                 .admissionDiagnosis(request.getAdmissionDiagnosis())
@@ -152,6 +163,38 @@ public class IpdServiceImpl implements IpdService {
     }
 
     @Override
+    @Transactional
+    public AdmissionResponse cancelAdmission(Long admissionId, String currentUser) {
+        Admission admission = admissionRepository.findById(admissionId)
+                .orElseThrow(() -> new RuntimeException("Admission not found"));
+        
+        if (!"REQUESTED".equals(admission.getStatus())) {
+            throw new IllegalStateException("Only REQUESTED admissions can be cancelled.");
+        }
+
+        admission.setStatus("CANCELLED");
+        admission.setDischargeDate(LocalDateTime.now());
+        admission.setDischargeSummary("Admission cancelled due to non-payment of deposit.");
+
+        // Find the patient's admitted visit and mark as completed
+        visitRepository.findByPatientPatientId(admission.getPatient().getPatientId()).stream()
+                .filter(v -> "ADMITTED".equals(v.getStatus()))
+                .findFirst()
+                .ifPresent(v -> {
+                    v.setStatus("COMPLETED");
+                    visitRepository.save(v);
+                    
+                    Appointment appt = v.getAppointment();
+                    if (appt != null) {
+                        appt.setStatus("COMPLETED");
+                        appointmentRepository.save(appt);
+                    }
+                });
+
+        return mapToAdmissionResponse(admissionRepository.save(admission));
+    }
+
+    @Override
     public List<AdmissionResponse> getAdmissionsByStatus(String status) {
         return admissionRepository.findByStatus(status).stream()
                 .map(this::mapToAdmissionResponse)
@@ -163,6 +206,13 @@ public class IpdServiceImpl implements IpdService {
         User doctor = userRepository.findByUsername(currentUser)
                 .orElseThrow(() -> new RuntimeException("Doctor not found"));
         return admissionRepository.findByAdmittingDoctorUserId(doctor.getUserId()).stream()
+                .map(this::mapToAdmissionResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<AdmissionResponse> getAdmissionsByPatient(Long patientId) {
+        return admissionRepository.findByPatientPatientId(patientId).stream()
                 .map(this::mapToAdmissionResponse)
                 .collect(Collectors.toList());
     }

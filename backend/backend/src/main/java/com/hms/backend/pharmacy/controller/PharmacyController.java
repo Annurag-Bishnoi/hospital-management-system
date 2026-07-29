@@ -62,6 +62,11 @@ public class PharmacyController {
         return ResponseEntity.ok(pharmacyService.getPendingPrescriptions());
     }
 
+    @GetMapping("/prescriptions/dispensed")
+    public ResponseEntity<List<Prescription>> getDispensedPrescriptions() {
+        return ResponseEntity.ok(pharmacyService.getDispensedPrescriptions());
+    }
+
     @PostMapping("/dispense")
     public ResponseEntity<DispenseResponse> dispenseMedicine(@RequestBody DispenseRequest request) {
         String currentUser = "pharmacist_user"; 

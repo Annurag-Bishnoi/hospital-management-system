@@ -1,7 +1,9 @@
 package com.hms.backend.ipd.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,6 +31,8 @@ public class IpdDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AdmissionRequest {
         private Long patientId;
         private Long admittingDoctorId;
