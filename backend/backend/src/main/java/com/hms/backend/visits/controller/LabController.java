@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/lab")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@Transactional
 public class LabController {
 
     private final VisitLabTestRepository visitLabTestRepository;

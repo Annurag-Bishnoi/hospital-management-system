@@ -4,6 +4,7 @@ package com.hms.backend.medication.entity;
 import com.hms.backend.prescription.entity.Prescription;
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "medications")
@@ -19,6 +20,7 @@ public class Medication {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long medicationId;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "prescription_id", nullable = false, updatable = false)
     private Prescription prescription;

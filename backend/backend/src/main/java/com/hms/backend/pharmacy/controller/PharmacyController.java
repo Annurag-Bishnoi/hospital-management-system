@@ -7,6 +7,7 @@ import com.hms.backend.prescription.entity.Prescription;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -14,6 +15,7 @@ import java.util.List;
 @RequestMapping("/api/pharmacy")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@Transactional
 public class PharmacyController {
 
     private final PharmacyService pharmacyService;
@@ -58,13 +60,36 @@ public class PharmacyController {
     }
 
     @GetMapping("/prescriptions/pending")
-    public ResponseEntity<List<Prescription>> getPendingPrescriptions() {
-        return ResponseEntity.ok(pharmacyService.getPendingPrescriptions());
+    public ResponseEntity<List<java.util.Map<String, Object>>> getPendingPrescriptions() {
+        return ResponseEntity.ok(pharmacyService.getPendingPrescriptions().stream().map(this::mapToDTO).collect(java.util.stream.Collectors.toList()));
     }
 
     @GetMapping("/prescriptions/dispensed")
-    public ResponseEntity<List<Prescription>> getDispensedPrescriptions() {
-        return ResponseEntity.ok(pharmacyService.getDispensedPrescriptions());
+    public ResponseEntity<List<java.util.Map<String, Object>>> getDispensedPrescriptions() {
+        return ResponseEntity.ok(pharmacyService.getDispensedPrescriptions().stream().map(this::mapToDTO).collect(java.util.stream.Collectors.toList()));
+    }
+
+    private java.util.Map<String, Object> mapToDTO(Prescription p) {
+        java.util.Map<String, Object> dto = new java.util.HashMap<>();
+        dto.put("prescriptionId", p.getPrescriptionId());
+        
+        java.util.Map<String, Object> patient = new java.util.HashMap<>();
+        patient.put("patientId", p.getPatient().getPatientId());
+        patient.put("name", p.getPatient().getFullName());
+        dto.put("patient", patient);
+
+        java.util.Map<String, Object> doctor = new java.util.HashMap<>();
+        doctor.put("doctorId", p.getDoctor().getDoctorId());
+        doctor.put("name", p.getDoctor().getFullName());
+        dto.put("doctor", doctor);
+
+        dto.put("diagnosis", p.getDiagnosis());
+        dto.put("notes", p.getNotes());
+        dto.put("status", p.getStatus());
+        dto.put("createdAt", p.getCreatedAt());
+        dto.put("medications", p.getMedications());
+        
+        return dto;
     }
 
     @PostMapping("/dispense")

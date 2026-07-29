@@ -136,9 +136,14 @@ public class PharmacyService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public List<Prescription> getPendingPrescriptions() {
         List<Prescription> pending = prescriptionRepository.findByStatus("CREATED");
         for (Prescription p : pending) {
+            // Force initialization of lazy proxies
+            if (p.getPatient() != null) p.getPatient().getFullName();
+            if (p.getDoctor() != null) p.getDoctor().getFullName();
+            
             for (com.hms.backend.medication.entity.Medication m : p.getMedications()) {
                 InventoryItem item = inventoryItemRepository.findByCielConceptId(m.getMedicationCode()).orElse(null);
                 if (item != null) {
@@ -161,8 +166,15 @@ public class PharmacyService {
         return pending;
     }
 
+    @Transactional
     public List<Prescription> getDispensedPrescriptions() {
-        return prescriptionRepository.findByStatus("DISPENSED");
+        List<Prescription> dispensed = prescriptionRepository.findByStatus("DISPENSED");
+        for (Prescription p : dispensed) {
+            if (p.getPatient() != null) p.getPatient().getFullName();
+            if (p.getDoctor() != null) p.getDoctor().getFullName();
+            p.getMedications().size();
+        }
+        return dispensed;
     }
 
     @Transactional
