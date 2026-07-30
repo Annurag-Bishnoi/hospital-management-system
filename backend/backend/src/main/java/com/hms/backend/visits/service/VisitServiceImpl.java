@@ -245,9 +245,7 @@ public class VisitServiceImpl implements VisitService {
                 }).collect(Collectors.toList());
             
             if (!newLabTests.isEmpty()) {
-                visitLabTestRepository.saveAll(newLabTests);
-
-                // Generate LAB bill
+                // Generate LAB bill first
                 BillRequest labBillReq = new BillRequest();
                 labBillReq.setPatientId(visit.getPatient().getPatientId());
                 labBillReq.setPatientName(visit.getPatient().getFullName());
@@ -263,26 +261,15 @@ public class VisitServiceImpl implements VisitService {
                     labItems.add(req);
                 }
                 labBillReq.setItems(labItems);
-                billingService.generateBill(labBillReq);
+                com.hms.backend.billing.dto.BillResponse billResp = billingService.generateBill(labBillReq);
+
+                // Set billId on the lab tests and save
+                for (com.hms.backend.visits.entity.VisitLabTest lt : newLabTests) {
+                    lt.setBillId(billResp.getId());
+                }
+                visitLabTestRepository.saveAll(newLabTests);
             }
         }
-
-        // Generate CONSULTATION bill
-        BillRequest consultBillReq = new BillRequest();
-        consultBillReq.setPatientId(visit.getPatient().getPatientId());
-        consultBillReq.setPatientName(visit.getPatient().getFullName());
-        consultBillReq.setDepartment("CONSULTATION");
-        consultBillReq.setGeneratedBy("System (Dr. " + visit.getDoctor().getFullName() + ")");
-        
-        List<BillItemRequest> consultItems = new ArrayList<>();
-        BillItemRequest consultItem = new BillItemRequest();
-        consultItem.setDescription("Doctor Consultation Fee");
-        consultItem.setQuantity(1);
-        consultItem.setUnitPrice(BigDecimal.valueOf(500.00)); // Standard fee
-        consultItems.add(consultItem);
-        
-        consultBillReq.setItems(consultItems);
-        billingService.generateBill(consultBillReq);
 
         return mapToResponse(visitRepository.save(visit));
     }

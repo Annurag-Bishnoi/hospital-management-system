@@ -7,6 +7,8 @@ import com.hms.backend.visits.dto.LabTestResponse;
 import com.hms.backend.visits.entity.Visit;
 import com.hms.backend.visits.entity.VisitLabTest;
 import com.hms.backend.visits.repository.VisitLabTestRepository;
+import com.hms.backend.billing.service.BillingService;
+import com.hms.backend.billing.dto.PaymentRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +35,7 @@ public class LabController {
 
     private final VisitLabTestRepository visitLabTestRepository;
     private final AppointmentRepository appointmentRepository;
+    private final BillingService billingService;
 
     /** All lab tests, newest first */
     @GetMapping("/tests")
@@ -148,8 +152,31 @@ public class LabController {
     public ResponseEntity<LabTestResponse> markPaymentPaid(@PathVariable Long testId) {
         VisitLabTest test = visitLabTestRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Lab test not found: " + testId));
-        test.setPaymentStatus("PAID");
-        return ResponseEntity.ok(toResponse(visitLabTestRepository.save(test)));
+        
+        if (test.getBillId() != null) {
+            PaymentRequest payReq = new PaymentRequest();
+            payReq.setProcessedBy("Lab Technician");
+            payReq.setDiscountAmount(BigDecimal.ZERO);
+            payReq.setTaxPercentage(BigDecimal.ZERO);
+            payReq.setInsuranceCoverageAmount(BigDecimal.ZERO);
+            try {
+                billingService.processPayment(test.getBillId(), payReq);
+            } catch (Exception e) {
+                System.err.println("Warning: Could not process bill payment automatically: " + e.getMessage());
+            }
+
+            // Mark all tests under this bill as paid
+            List<VisitLabTest> allTestsForBill = visitLabTestRepository.findByBillId(test.getBillId());
+            for (VisitLabTest t : allTestsForBill) {
+                t.setPaymentStatus("PAID");
+                visitLabTestRepository.save(t);
+            }
+        } else {
+            test.setPaymentStatus("PAID");
+            visitLabTestRepository.save(test);
+        }
+        
+        return ResponseEntity.ok(toResponse(test));
     }
 
     /** Mark sample as collected; changes status from PENDING → IN_PROGRESS */

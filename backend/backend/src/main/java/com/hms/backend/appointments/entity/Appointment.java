@@ -51,6 +51,9 @@ public class Appointment {
     @Column(name = "payment_status", length = 30)
     private String paymentStatus;
 
+    @Column(name = "bill_id")
+    private Long billId;
+
     @Column(length = 500)
     private String reasonForVisit;
 

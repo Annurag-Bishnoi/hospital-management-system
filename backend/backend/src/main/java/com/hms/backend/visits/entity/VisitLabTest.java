@@ -51,6 +51,9 @@ public class VisitLabTest {
     @Column(name = "payment_status", length = 50)
     private String paymentStatus;
 
+    @Column(name = "bill_id")
+    private Long billId;
+
     @Column(name = "recorded_at", nullable = false)
     private LocalDateTime recordedAt;
 

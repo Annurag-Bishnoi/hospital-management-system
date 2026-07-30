@@ -9,9 +9,19 @@ import com.hms.backend.doctors.entity.Doctor;
 import com.hms.backend.doctors.repository.DoctorRepository;
 import com.hms.backend.patients.entity.Patient;
 import com.hms.backend.patients.repository.PatientRepository;
+import com.hms.backend.billing.service.BillingService;
+import com.hms.backend.billing.dto.BillRequest;
+import com.hms.backend.billing.dto.BillItemRequest;
+import com.hms.backend.billing.dto.PaymentRequest;
+import com.hms.backend.billing.dto.BillResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -23,6 +33,7 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
+    private final BillingService billingService;
 
     public AppointmentResponse bookAppointment(AppointmentCreateRequest request) {
 
@@ -45,6 +56,8 @@ public class AppointmentService {
             throw new RuntimeException("Selected appointment slot is already booked");
         }
 
+        Double fee = doctor.getConsultationFee() != null ? doctor.getConsultationFee() : 0.0;
+        
         Appointment appointment = Appointment.builder()
                 .appointmentNumber(generateAppointmentNumber())
                 .tokenNumber(generateTokenNumber())
@@ -55,12 +68,29 @@ public class AppointmentService {
                 .reasonForVisit(request.getReasonForVisit())
                 .consultationType(request.getConsultationType())
                 .notes(request.getNotes())
-                .consultationFee(doctor.getConsultationFee() != null ? doctor.getConsultationFee() : 0.0)
+                .consultationFee(fee)
                 .paymentStatus("PENDING")
                 .status("SCHEDULED")
                 .build();
 
         Appointment savedAppointment = appointmentRepository.save(appointment);
+
+        // Generate the consultation bill
+        BillRequest billReq = new BillRequest();
+        billReq.setPatientId(patient.getPatientId());
+        billReq.setPatientName(patient.getUser() != null ? patient.getUser().getFullName() : "Unknown");
+        billReq.setDepartment("CONSULTATION");
+        billReq.setGeneratedBy("System (Auto-generated)");
+
+        BillItemRequest itemReq = new BillItemRequest();
+        itemReq.setDescription("Consultation Fee - Dr. " + (doctor.getUser() != null ? doctor.getUser().getFullName() : "Unknown"));
+        itemReq.setQuantity(1);
+        itemReq.setUnitPrice(BigDecimal.valueOf(fee));
+        billReq.setItems(Collections.singletonList(itemReq));
+
+        BillResponse billResponse = billingService.generateBill(billReq);
+        savedAppointment.setBillId(billResponse.getId());
+        appointmentRepository.save(savedAppointment);
 
         return AppointmentResponse.builder()
                 .appointmentId(savedAppointment.getAppointmentId())
@@ -155,8 +185,23 @@ public class AppointmentService {
     public AppointmentResponse markPaymentPaid(Long appointmentId) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + appointmentId));
+        
         appointment.setPaymentStatus("PAID");
         Appointment updated = appointmentRepository.save(appointment);
+
+        if (updated.getBillId() != null) {
+            PaymentRequest payReq = new PaymentRequest();
+            payReq.setProcessedBy("Receptionist");
+            payReq.setDiscountAmount(BigDecimal.ZERO);
+            payReq.setTaxPercentage(BigDecimal.ZERO);
+            payReq.setInsuranceCoverageAmount(BigDecimal.ZERO);
+            try {
+                billingService.processPayment(updated.getBillId(), payReq);
+            } catch (Exception e) {
+                System.err.println("Warning: Could not process bill payment automatically: " + e.getMessage());
+            }
+        }
+
         return AppointmentResponse.builder()
                 .appointmentId(updated.getAppointmentId())
                 .appointmentNumber(updated.getAppointmentNumber())

@@ -10,4 +10,5 @@ public interface VisitLabTestRepository extends JpaRepository<VisitLabTest, Long
     List<VisitLabTest> findByStatus(String status);
     List<VisitLabTest> findAllByOrderByRecordedAtDesc();
     long countByStatus(String status);
+    List<VisitLabTest> findByBillId(Long billId);
 }
