@@ -334,7 +334,7 @@ public class VisitServiceImpl implements VisitService {
     private VisitResponse mapToResponse(Visit visit) {
         List<com.hms.backend.visits.entity.VisitVital> rawVitals = visitVitalRepository.findByVisitVisitId(visit.getVisitId());
         List<com.hms.backend.visits.dto.VisitVitalResponse> mappedVitals = rawVitals.stream().map(vital -> {
-            String conceptName = medicalConceptRepository.findByCielId(vital.getCielId())
+            String conceptName = medicalConceptRepository.findByCielId(String.valueOf(vital.getCielId()))
                     .map(com.hms.backend.entity.MedicalConcept::getConceptName)
                     .orElse("Unknown Concept");
 

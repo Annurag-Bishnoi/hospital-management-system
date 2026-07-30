@@ -18,4 +18,7 @@ public class UserResponse {
     private String roleName;
     private Boolean active;
     private Boolean accountLocked;
+
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private String temporaryPassword;
 }

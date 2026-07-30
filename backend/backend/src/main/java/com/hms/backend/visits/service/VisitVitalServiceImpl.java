@@ -155,7 +155,7 @@ public class VisitVitalServiceImpl implements VisitVitalService {
     // Helper to map entities to DTOs and resolve the CIEL concept name
     private List<VisitVitalResponse> mapToResponseList(List<VisitVital> vitals) {
         return vitals.stream().map(vital -> {
-            String conceptName = medicalConceptRepository.findByCielId(vital.getCielId())
+            String conceptName = medicalConceptRepository.findByCielId(String.valueOf(vital.getCielId()))
                     .map(MedicalConcept::getConceptName)
                     .orElse("Unknown Concept");
 

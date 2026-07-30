@@ -13,7 +13,7 @@ public interface MedicalConceptRepository extends JpaRepository<MedicalConcept, 
     List<MedicalConcept> findByConceptClassAndConceptNameContainingIgnoreCase(String conceptClass, String conceptName);
 
     // 2. Helper to get the concept name when returning VisitVital responses
-    Optional<MedicalConcept> findByCielId(Long cielId);
+    Optional<MedicalConcept> findByCielId(String cielId);
 
     // 3. General name search
     List<MedicalConcept> findByConceptNameContainingIgnoreCase(String conceptName);

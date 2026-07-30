@@ -50,43 +50,59 @@ public class DatabaseSeeder {
                 ClassPathResource resource = new ClassPathResource("ciel_dictionary.json");
 
                 try {
-                    // Parse the JSON file
-                    JsonNode rootNode = mapper.readTree(resource.getInputStream());
+                    // Use Jackson Streaming API for low memory footprint in deployment environments
+                    try (tools.jackson.core.JsonParser parser = mapper.createParser(resource.getInputStream())) {
+                        List<MedicalConcept> conceptsToSave = new ArrayList<>();
+                        boolean inConceptsArray = false;
+                        
+                        while (!parser.isClosed()) {
+                            tools.jackson.core.JsonToken token = parser.nextToken();
+                            if (token == null) break;
+                            
+                            if (!inConceptsArray) {
+                                if (token == tools.jackson.core.JsonToken.PROPERTY_NAME && "concepts".equals(parser.currentName())) {
+                                    token = parser.nextToken();
+                                    if (token == tools.jackson.core.JsonToken.START_ARRAY) {
+                                        inConceptsArray = true;
+                                    }
+                                }
+                            } else {
+                                if (token == tools.jackson.core.JsonToken.START_OBJECT) {
+                                    // Parse this specific concept into a JsonNode tree
+                                    JsonNode node = mapper.readTree(parser);
+                                    
+                                    String conceptClass = node.path("concept_class").asText();
+                                    if ("Test".equals(conceptClass) || "Drug".equals(conceptClass) || 
+                                        "Diagnosis".equals(conceptClass) || "Symptom".equals(conceptClass) || 
+                                        "Finding".equals(conceptClass)) {
 
-                    // TARGET THE CONCEPTS ARRAY SPECIFICALLY
-                    JsonNode conceptsArray = rootNode.path("concepts");
+                                        String id = node.path("id").asText();
+                                        String name = "Unknown";
+                                        JsonNode namesNode = node.path("names");
+                                        if (namesNode.isArray() && !namesNode.isEmpty()) {
+                                            name = namesNode.get(0).path("name").asText();
+                                        }
 
-                    // Fallback just in case OCL changes their export format to a direct array
-                    if (conceptsArray.isMissingNode() && rootNode.isArray()) {
-                        conceptsArray = rootNode;
-                    }
-
-                    List<MedicalConcept> conceptsToSave = new ArrayList<>();
-
-                    // Loop through the specific concepts array
-                    for (JsonNode node : conceptsArray) {
-                        String conceptClass = node.path("concept_class").asText();
-
-                        // We want to save Vitals ("Test"), Medicines ("Drug"), Diagnoses ("Diagnosis", "Symptom", "Finding")
-                        if ("Test".equals(conceptClass) || "Drug".equals(conceptClass) || 
-                            "Diagnosis".equals(conceptClass) || "Symptom".equals(conceptClass) || 
-                            "Finding".equals(conceptClass)) {
-
-                            String id = node.path("id").asText();
-
-                            // Grab the primary English name
-                            String name = "Unknown";
-                            JsonNode namesNode = node.path("names");
-                            if (namesNode.isArray() && !namesNode.isEmpty()) {
-                                name = namesNode.get(0).path("name").asText();
+                                        conceptsToSave.add(new MedicalConcept(id, name, conceptClass));
+                                    }
+                                    
+                                    // Save in batches to prevent memory spikes
+                                    if (conceptsToSave.size() >= 1000) {
+                                        repository.saveAll(conceptsToSave);
+                                        conceptsToSave.clear();
+                                    }
+                                } else if (token == tools.jackson.core.JsonToken.END_ARRAY) {
+                                    break;
+                                }
                             }
-
-                            conceptsToSave.add(new MedicalConcept(id, name, conceptClass));
+                        }
+                        
+                        // Save any remaining concepts
+                        if (!conceptsToSave.isEmpty()) {
+                            repository.saveAll(conceptsToSave);
                         }
                     }
 
-                    // Save everything to your database
-                    repository.saveAll(conceptsToSave);
                     System.out.println("=== ROLES ===");
                     roleRepository.findAll().forEach(r -> System.out.println(r.getRoleName()));
 

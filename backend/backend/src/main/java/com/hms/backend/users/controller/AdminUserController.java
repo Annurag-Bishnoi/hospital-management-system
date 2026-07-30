@@ -90,6 +90,15 @@ public class AdminUserController {
     }
 
 
+    @PostMapping("/users/{userId}/reset-credentials")
+    public ResponseEntity<?> autoResetCredentials(@PathVariable Long userId) {
+        try {
+            return ResponseEntity.ok(adminUserService.autoResetCredentials(userId));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
     @PatchMapping("/users/{userId}/reset-password")
     public ResponseEntity<?> resetPassword(
             @PathVariable Long userId,
