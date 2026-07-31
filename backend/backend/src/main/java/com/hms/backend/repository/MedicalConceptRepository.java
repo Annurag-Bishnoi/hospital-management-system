@@ -18,4 +18,6 @@ public interface MedicalConceptRepository extends JpaRepository<MedicalConcept, 
     // 3. General name search
     List<MedicalConcept> findByConceptNameContainingIgnoreCase(String conceptName);
 
+    // 4. Check if class exists
+    boolean existsByConceptClass(String conceptClass);
 }

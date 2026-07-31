@@ -40,7 +40,13 @@ public class DatabaseSeeder {
             InsuranceProviderRepository insuranceRepo,
             PasswordEncoder passwordEncoder) {
         return args -> {
-            boolean hasDiagnosis = repository.findAll().stream().anyMatch(c -> "Diagnosis".equals(c.getConceptClass()));
+            boolean hasDiagnosis = false;
+            try {
+                hasDiagnosis = repository.existsByConceptClass("Diagnosis");
+            } catch (Exception e) {
+                // Ignore if table not created yet or other issues
+            }
+            
             // Check if database is already fully seeded so we don't duplicate data on restart
             if (repository.count() == 0 || !hasDiagnosis) {
                 System.out.println("Seeding CIEL Dictionary from JSON (Vitals, Drugs, and Diagnoses)...");
