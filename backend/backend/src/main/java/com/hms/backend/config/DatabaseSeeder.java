@@ -107,12 +107,12 @@ public class DatabaseSeeder {
             String[][] rolesAndUsers = {
                 {"ADMIN", "Administrator", "admin01", "Super Admin", "admin@hospital.com", "9990000001"},
                 {"DOCTOR", "Doctor", "doctor01", "Dr. John Doe", "doctor@hospital.com", "9990000002"},
-                {"NURSE", "Nurse", "nurse01", "Nurse Jane", "nurse@hospital.com", "9990000003"},
-                {"RECEPTIONIST", "Receptionist", "reception01", "Front Desk", "reception@hospital.com", "9990000004"},
-                {"PHARMACIST", "Pharmacist", "pharma01", "Pharmacy Lead", "pharma@hospital.com", "9990000005"},
-                {"BILLING", "Billing Staff", "billing01", "Billing Dept", "billing@hospital.com", "9990000006"},
-                {"LABORATORY", "Lab Technician", "lab01", "Lab Tech", "lab@hospital.com", "9990000007"},
-                {"PATIENT", "Patient", "patient01", "Test Patient", "patient@hospital.com", "9990000008"}
+                {"RECEPTIONIST", "Receptionist", "reception01", "Front Desk", "reception@hospital.com", "9990000003"},
+                {"PHARMACIST", "Pharmacist", "pharma01", "Pharmacy Lead", "pharma@hospital.com", "9990000004"},
+                {"BILLING", "Billing Staff", "billing01", "Billing Dept", "billing@hospital.com", "9990000005"},
+                {"LABORATORY", "Lab Technician", "lab01", "Lab Tech", "lab@hospital.com", "9990000006"},
+                {"PATIENT", "Patient", "patient01", "Test Patient", "patient@hospital.com", "9990000007"},
+                {"NURSE", "Nurse", "nurse01", "Nurse Jane", "nurse@hospital.com", "9990000008"}
             };
 
             for (String[] data : rolesAndUsers) {
