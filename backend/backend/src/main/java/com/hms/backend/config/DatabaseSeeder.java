@@ -169,7 +169,6 @@ public class DatabaseSeeder {
                 for (int i = 1; i <= 10; i++) bedRepository.save(Bed.builder().bedNumber("GW-" + i).ward(gw).status("AVAILABLE").build());
                 for (int i = 1; i <= 5; i++) bedRepository.save(Bed.builder().bedNumber("ICU-" + i).ward(icu).status("AVAILABLE").build());
                 for (int i = 1; i <= 2; i++) bedRepository.save(Bed.builder().bedNumber("VIP-" + i).ward(vip).status("AVAILABLE").build());
-                for (int i = 1; i <= 2; i++) bedRepository.save(Bed.builder().bedNumber("VIP-" + i).ward(vip).status("AVAILABLE").build());
             }
 
             if (insuranceRepo.count() == 0) {
