@@ -25,6 +25,8 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Configuration
 public class DatabaseSeeder {
@@ -53,11 +55,13 @@ public class DatabaseSeeder {
                 repository.deleteAll(); // clear partial seeds
 
                 ObjectMapper mapper = new ObjectMapper();
-                ClassPathResource resource = new ClassPathResource("ciel_dictionary.json");
+                ClassPathResource resource = new ClassPathResource("ciel_dictionary.zip");
 
-                try {
-                    // Use Jackson Streaming API for low memory footprint in deployment environments
-                    try (tools.jackson.core.JsonParser parser = mapper.createParser(resource.getInputStream())) {
+                try (ZipInputStream zis = new ZipInputStream(resource.getInputStream())) {
+                    ZipEntry entry = zis.getNextEntry();
+                    if (entry != null) {
+                        // Use Jackson Streaming API for low memory footprint in deployment environments
+                        try (tools.jackson.core.JsonParser parser = mapper.createParser(zis)) {
                         List<MedicalConcept> conceptsToSave = new ArrayList<>();
                         while (!parser.isClosed()) {
                             tools.jackson.core.JsonToken token = parser.nextToken();
@@ -99,12 +103,13 @@ public class DatabaseSeeder {
                             repository.saveAll(conceptsToSave);
                         }
                     }
+                    }
 
                     System.out.println("=== ROLES ===");
                     roleRepository.findAll().forEach(r -> System.out.println(r.getRoleName()));
 
                 } catch (Exception e) {
-                    System.err.println("Error reading the JSON file: " + e.getMessage());
+                    System.err.println("Error reading the ZIP file: " + e.getMessage());
                 }
             } else {
                 System.out.println("CIEL Concepts (including Diagnosis) are already loaded in the database.");
