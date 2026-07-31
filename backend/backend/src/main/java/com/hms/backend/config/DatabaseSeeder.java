@@ -105,23 +105,23 @@ public class DatabaseSeeder {
             }
 
             String[][] rolesAndUsers = {
-                {"ADMIN", "Administrator", "admin01", "Super Admin", "admin@hospital.com"},
-                {"DOCTOR", "Doctor", "doctor01", "Dr. John Doe", "doctor@hospital.com"},
-                {"NURSE", "Nurse", "nurse01", "Nurse Jane", "nurse@hospital.com"},
-                {"RECEPTIONIST", "Receptionist", "reception01", "Front Desk", "reception@hospital.com"},
-                {"PHARMACIST", "Pharmacist", "pharma01", "Pharmacy Lead", "pharma@hospital.com"},
-                {"BILLING", "Billing Staff", "billing01", "Billing Dept", "billing@hospital.com"},
-                {"LABORATORY", "Lab Technician", "lab01", "Lab Tech", "lab@hospital.com"},
-                {"PATIENT", "Patient", "patient01", "Test Patient", "patient@hospital.com"}
+                {"ADMIN", "Administrator", "admin01", "Super Admin", "admin@hospital.com", "9990000001"},
+                {"DOCTOR", "Doctor", "doctor01", "Dr. John Doe", "doctor@hospital.com", "9990000002"},
+                {"NURSE", "Nurse", "nurse01", "Nurse Jane", "nurse@hospital.com", "9990000003"},
+                {"RECEPTIONIST", "Receptionist", "reception01", "Front Desk", "reception@hospital.com", "9990000004"},
+                {"PHARMACIST", "Pharmacist", "pharma01", "Pharmacy Lead", "pharma@hospital.com", "9990000005"},
+                {"BILLING", "Billing Staff", "billing01", "Billing Dept", "billing@hospital.com", "9990000006"},
+                {"LABORATORY", "Lab Technician", "lab01", "Lab Tech", "lab@hospital.com", "9990000007"},
+                {"PATIENT", "Patient", "patient01", "Test Patient", "patient@hospital.com", "9990000008"}
             };
 
-            int phoneCounter = 1;
             for (String[] data : rolesAndUsers) {
                 String roleCode = data[0];
                 String roleName = data[1];
                 String username = data[2];
                 String fullName = data[3];
                 String email = data[4];
+                String phone = data[5];
 
                 Role role = roleRepository.findByRoleCode(roleCode)
                     .orElseGet(() -> {
@@ -138,7 +138,7 @@ public class DatabaseSeeder {
                     user.setEmail(email);
                     user.setPasswordHash(passwordEncoder.encode("Anurag@123"));
                     user.setFullName(fullName);
-                    user.setPhone("999000000" + phoneCounter); // ensure unique phone
+                    user.setPhone(phone); // ensure unique phone
                     user.setActive(true);
                     userRepository.save(user);
 
@@ -147,7 +147,6 @@ public class DatabaseSeeder {
                     ur.setRole(role);
                     userRoleRepository.save(ur);
                 }
-                phoneCounter++;
             }
             System.out.println("Default users seeded successfully.");
             
