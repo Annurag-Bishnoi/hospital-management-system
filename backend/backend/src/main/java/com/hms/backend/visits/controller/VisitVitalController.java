@@ -50,6 +50,11 @@ public class VisitVitalController {
         return ResponseEntity.ok(visitVitalService.getVitalsByVisitId(visitId));
     }
 
+    @RequestMapping(value = "/api/vitals/appointment/{appointmentId}", method = RequestMethod.GET)
+    public ResponseEntity<List<VisitVitalResponse>> getVitalsByAppointmentId(@PathVariable Long appointmentId) {
+        return ResponseEntity.ok(visitVitalService.getVitalsByAppointmentId(appointmentId));
+    }
+
     @RequestMapping(value = "/api/visits/vitals/dictionary/search", method = RequestMethod.GET)
     public ResponseEntity<List<MedicalConcept>> searchVitalConcepts(@RequestParam String term) {
         if (term == null || term.trim().length() < 2) {

@@ -67,6 +67,8 @@ public class IpdDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class DailyRoundRequest {
         private String clinicalNotes;
     }
@@ -82,6 +84,8 @@ public class IpdDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class NursingChartRequest {
         private Double temperature;
         private String bloodPressure;

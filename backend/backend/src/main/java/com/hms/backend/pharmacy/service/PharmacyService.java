@@ -127,7 +127,23 @@ public class PharmacyService {
         return inventoryItemRepository.findAll().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
-    }
+     }
+
+     public List<java.util.Map<String, Object>> getBatches(Long inventoryItemId) {
+         InventoryItem item = inventoryItemRepository.findById(inventoryItemId)
+                 .orElseThrow(() -> new IllegalArgumentException("Inventory item not found"));
+         List<MedicineBatch> batches = medicineBatchRepository.findByInventoryItemOrderByExpiryDateAsc(item);
+         return batches.stream().map(batch -> {
+             java.util.Map<String, Object> map = new java.util.HashMap<>();
+             map.put("batchId", batch.getBatchId());
+             map.put("batchNumber", batch.getBatchNumber());
+             map.put("quantity", batch.getQuantity());
+             map.put("expiryDate", batch.getExpiryDate());
+             map.put("supplierName", batch.getSupplierName());
+             map.put("unitPrice", batch.getUnitPrice());
+             return map;
+         }).collect(Collectors.toList());
+     }
 
     public List<InventoryResponse> getAlerts() {
         List<InventoryItem> lowStockItems = inventoryItemRepository.findLowStockItems();
@@ -147,8 +163,15 @@ public class PharmacyService {
             for (com.hms.backend.medication.entity.Medication m : p.getMedications()) {
                 InventoryItem item = inventoryItemRepository.findByCielConceptId(m.getMedicationCode()).orElse(null);
                 if (item != null) {
-                    double mockPrice = 15.50 + (item.getMedicineName().length() * 2);
-                    java.math.BigDecimal price = java.math.BigDecimal.valueOf(mockPrice);
+                    List<MedicineBatch> batches = medicineBatchRepository.findByInventoryItemOrderByExpiryDateAsc(item);
+                    java.math.BigDecimal price = null;
+                    if (batches != null && !batches.isEmpty()) {
+                        price = batches.get(batches.size() - 1).getUnitPrice();
+                    }
+                    if (price == null) {
+                        double mockPrice = 15.50 + (item.getMedicineName().length() * 2);
+                        price = java.math.BigDecimal.valueOf(mockPrice);
+                    }
                     m.setUnitPrice(price);
                     try {
                         int qty = Integer.parseInt(m.getQuantity() != null ? m.getQuantity() : "1");
@@ -175,6 +198,17 @@ public class PharmacyService {
             p.getMedications().size();
         }
         return dispensed;
+    }
+
+    @Transactional
+    public List<Prescription> getRejectedPrescriptions() {
+        List<Prescription> rejected = prescriptionRepository.findByStatus("REJECTED");
+        for (Prescription p : rejected) {
+            if (p.getPatient() != null) p.getPatient().getFullName();
+            if (p.getDoctor() != null) p.getDoctor().getFullName();
+            p.getMedications().size();
+        }
+        return rejected;
     }
 
     @Transactional
@@ -243,9 +277,16 @@ public class PharmacyService {
                 BillItemRequest billItemReq = new BillItemRequest();
                 billItemReq.setDescription(inventoryItem.getMedicineName());
                 billItemReq.setQuantity(itemDto.getQuantity());
-                // Using the mock price formula defined in frontend: 15.50 + (name.length * 2)
-                double mockPrice = 15.50 + (inventoryItem.getMedicineName().length() * 2);
-                billItemReq.setUnitPrice(BigDecimal.valueOf(mockPrice));
+                List<MedicineBatch> batches = medicineBatchRepository.findByInventoryItemOrderByExpiryDateAsc(inventoryItem);
+                BigDecimal price = null;
+                if (batches != null && !batches.isEmpty()) {
+                    price = batches.get(batches.size() - 1).getUnitPrice();
+                }
+                if (price == null) {
+                    double mockPrice = 15.50 + (inventoryItem.getMedicineName().length() * 2);
+                    price = BigDecimal.valueOf(mockPrice);
+                }
+                billItemReq.setUnitPrice(price);
                 billItems.add(billItemReq);
             }
         }
@@ -276,6 +317,19 @@ public class PharmacyService {
                 .nearestExpiryDate(nearestExpiry)
                 .isActive(item.getIsActive())
                 .build();
+    }
+
+    @Transactional
+    public void discardPrescription(Long prescriptionId, String currentUser) {
+        Prescription prescription = prescriptionRepository.findById(prescriptionId)
+                .orElseThrow(() -> new IllegalArgumentException("Prescription not found"));
+
+        if (!"CREATED".equals(prescription.getStatus())) {
+            throw new IllegalStateException("Only pending prescriptions can be discarded.");
+        }
+
+        prescription.setStatus("REJECTED");
+        prescriptionRepository.save(prescription);
     }
 }
 

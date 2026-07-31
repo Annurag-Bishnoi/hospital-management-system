@@ -49,13 +49,16 @@ public class AuthService {
             throw new RuntimeException("No role assigned to this user");
         }
 
-        String roleCode = userRoles
-                .iterator()
-                .next()
-                .getRole()
-                .getRoleCode();
+        String requestedRole = request.getRole().toUpperCase();
+        
+        boolean hasRole = userRoles.stream()
+                .anyMatch(ur -> ur.getRole().getRoleCode().equals(requestedRole));
 
-        String token = jwtUtil.generateToken(user.getUsername(), roleCode);
+        if (!hasRole) {
+            throw new RuntimeException("Unauthorized: You do not have the '" + requestedRole + "' role.");
+        }
+
+        String token = jwtUtil.generateToken(user.getUsername(), requestedRole);
 
         return LoginResponse.builder()
                 .success(true)
@@ -63,7 +66,7 @@ public class AuthService {
                 .userId(user.getUserId())
                 .username(user.getUsername())
                 .fullName(user.getFullName())
-                .role(roleCode)
+                .role(requestedRole)
                 .token(token)
                 .build();
     }

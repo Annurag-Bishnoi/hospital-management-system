@@ -112,7 +112,31 @@ public class IpdServiceImpl implements IpdService {
 
         admission.setBed(bed);
         admission.setStatus("ADMITTED");
-        return mapToAdmissionResponse(admissionRepository.save(admission));
+        Admission savedAdmission = admissionRepository.save(admission);
+
+        // Generate Advance IPD Bill
+        BigDecimal dailyCharge = bed.getWard().getDailyCharge();
+        BillRequest advanceBill = new BillRequest();
+        advanceBill.setPatientId(admission.getPatient().getPatientId());
+        advanceBill.setPatientName(admission.getPatient().getFullName());
+        advanceBill.setDepartment("IPD Deposit");
+        advanceBill.setGeneratedBy(currentUser);
+        
+        List<BillItemRequest> items = new ArrayList<>();
+        BillItemRequest depositItem = new BillItemRequest();
+        depositItem.setDescription(bed.getWard().getName() + " - Advance Bed Booking (1 Day)");
+        depositItem.setQuantity(1);
+        depositItem.setUnitPrice(dailyCharge);
+        items.add(depositItem);
+        
+        advanceBill.setItems(items);
+        com.hms.backend.billing.dto.BillResponse generatedBill = billingService.generateBill(advanceBill);
+        
+        com.hms.backend.billing.dto.PaymentRequest payment = new com.hms.backend.billing.dto.PaymentRequest();
+        payment.setProcessedBy(currentUser);
+        billingService.processPayment(generatedBill.getId(), payment);
+        
+        return mapToAdmissionResponse(savedAdmission);
     }
 
     @Override
@@ -136,12 +160,11 @@ public class IpdServiceImpl implements IpdService {
             bedRepository.save(bed);
         }
 
-        // Generate IPD Bill
+        // Generate IPD Final Bill
         long daysAdmitted = ChronoUnit.DAYS.between(admission.getAdmissionDate(), admission.getDischargeDate());
         if (daysAdmitted == 0) daysAdmitted = 1; // Minimum 1 day charge
         
         BigDecimal dailyCharge = bed.getWard().getDailyCharge();
-        BigDecimal totalRoomCharge = dailyCharge.multiply(BigDecimal.valueOf(daysAdmitted));
 
         BillRequest ipdBill = new BillRequest();
         ipdBill.setPatientId(admission.getPatient().getPatientId());
@@ -150,11 +173,21 @@ public class IpdServiceImpl implements IpdService {
         ipdBill.setGeneratedBy(currentUser);
 
         List<BillItemRequest> items = new ArrayList<>();
-        BillItemRequest roomChargeItem = new BillItemRequest();
-        roomChargeItem.setDescription(bed.getWard().getName() + " Room Charge (" + daysAdmitted + " Days)");
-        roomChargeItem.setQuantity((int) daysAdmitted);
-        roomChargeItem.setUnitPrice(dailyCharge);
-        items.add(roomChargeItem);
+        
+        if (daysAdmitted > 1) {
+            long remainingDays = daysAdmitted - 1;
+            BillItemRequest roomChargeItem = new BillItemRequest();
+            roomChargeItem.setDescription(bed.getWard().getName() + " Room Charge (Remaining " + remainingDays + " Days)");
+            roomChargeItem.setQuantity((int) remainingDays);
+            roomChargeItem.setUnitPrice(dailyCharge);
+            items.add(roomChargeItem);
+        } else {
+            BillItemRequest roomChargeItem = new BillItemRequest();
+            roomChargeItem.setDescription(bed.getWard().getName() + " Room Charge (Fully covered by Advance)");
+            roomChargeItem.setQuantity(1);
+            roomChargeItem.setUnitPrice(BigDecimal.ZERO);
+            items.add(roomChargeItem);
+        }
 
         ipdBill.setItems(items);
         billingService.generateBill(ipdBill);

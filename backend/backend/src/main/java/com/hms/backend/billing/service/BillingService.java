@@ -101,6 +101,12 @@ public class BillingService {
                 .collect(Collectors.toList());
     }
 
+    public List<BillResponse> getBillsByPatient(Long patientId) {
+        return billRepository.findByPatientId(patientId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
     private BillResponse mapToResponse(Bill bill) {
         BillResponse response = new BillResponse();
         response.setId(bill.getId());

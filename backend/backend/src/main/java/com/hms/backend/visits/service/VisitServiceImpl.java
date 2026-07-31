@@ -40,6 +40,7 @@ public class VisitServiceImpl implements VisitService {
     private final com.hms.backend.prescription.repository.PrescriptionRepository prescriptionRepository;
     private final com.hms.backend.visits.repository.VisitLabTestRepository visitLabTestRepository;
     private final BillingService billingService;
+    private final com.hms.backend.lab.repository.LabTestMasterRepository labTestMasterRepository;
 
     @Override
     @Transactional
@@ -257,7 +258,13 @@ public class VisitServiceImpl implements VisitService {
                     BillItemRequest req = new BillItemRequest();
                     req.setDescription("Lab Test: " + lt.getTestName());
                     req.setQuantity(1);
-                    req.setUnitPrice(BigDecimal.valueOf(150.0 + (lt.getTestName().length() * 5))); // Mock pricing logic
+                    
+                    // Fetch actual price from LabTestMaster, fallback to mock formula if not found
+                    BigDecimal testPrice = labTestMasterRepository.findByCielConceptId(lt.getTestCode())
+                            .map(com.hms.backend.lab.entity.LabTestMaster::getUnitPrice)
+                            .orElseGet(() -> BigDecimal.valueOf(150.0 + (lt.getTestName().length() * 5)));
+                            
+                    req.setUnitPrice(testPrice);
                     labItems.add(req);
                 }
                 labBillReq.setItems(labItems);

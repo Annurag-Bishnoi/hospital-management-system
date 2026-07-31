@@ -32,4 +32,9 @@ public class BillingController {
     public ResponseEntity<List<BillResponse>> getAllBills(@RequestParam(required = false) String status) {
         return ResponseEntity.ok(billingService.getAllBills(status));
     }
+
+    @GetMapping("/patient/{patientId}")
+    public ResponseEntity<List<BillResponse>> getPatientBills(@PathVariable Long patientId) {
+        return ResponseEntity.ok(billingService.getBillsByPatient(patientId));
+    }
 }

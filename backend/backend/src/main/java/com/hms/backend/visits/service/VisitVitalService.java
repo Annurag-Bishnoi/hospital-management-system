@@ -11,6 +11,8 @@ public interface VisitVitalService {
     // NEW: single structured vitals + auto READY_FOR_DOCTOR transition
     SimpleVitalsResponse recordSimpleVitals(Long appointmentId, SimpleVitalsRequest request);
 
+    List<VisitVitalResponse> getVitalsByAppointmentId(Long appointmentId);
+
     // CIEL-based batch vitals (kept for backward compat)
     List<VisitVitalResponse> recordVitals(Long visitId, List<VisitVitalRequest> requests);
 

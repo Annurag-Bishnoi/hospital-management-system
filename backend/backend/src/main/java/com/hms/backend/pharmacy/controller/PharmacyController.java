@@ -41,6 +41,11 @@ public class PharmacyController {
         return ResponseEntity.ok(pharmacyService.getAllInventory());
     }
 
+    @GetMapping("/inventory/{id}/batches")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getBatches(@PathVariable Long id) {
+        return ResponseEntity.ok(pharmacyService.getBatches(id));
+    }
+
     @GetMapping("/inventory/alerts")
     public ResponseEntity<List<InventoryResponse>> getAlerts() {
         return ResponseEntity.ok(pharmacyService.getAlerts());
@@ -67,6 +72,11 @@ public class PharmacyController {
     @GetMapping("/prescriptions/dispensed")
     public ResponseEntity<List<java.util.Map<String, Object>>> getDispensedPrescriptions() {
         return ResponseEntity.ok(pharmacyService.getDispensedPrescriptions().stream().map(this::mapToDTO).collect(java.util.stream.Collectors.toList()));
+    }
+
+    @GetMapping("/prescriptions/rejected")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getRejectedPrescriptions() {
+        return ResponseEntity.ok(pharmacyService.getRejectedPrescriptions().stream().map(this::mapToDTO).collect(java.util.stream.Collectors.toList()));
     }
 
     private java.util.Map<String, Object> mapToDTO(Prescription p) {
@@ -96,6 +106,13 @@ public class PharmacyController {
     public ResponseEntity<DispenseResponse> dispenseMedicine(@RequestBody DispenseRequest request) {
         String currentUser = "pharmacist_user"; 
         return ResponseEntity.ok(pharmacyService.dispenseMedicine(request, currentUser));
+    }
+
+    @PutMapping("/prescriptions/{id}/discard")
+    public ResponseEntity<?> discardPrescription(@PathVariable Long id) {
+        String currentUser = "pharmacist_user";
+        pharmacyService.discardPrescription(id, currentUser);
+        return ResponseEntity.ok().build();
     }
 }
 

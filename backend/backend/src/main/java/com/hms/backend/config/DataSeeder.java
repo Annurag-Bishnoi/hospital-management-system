@@ -68,50 +68,7 @@ public class DataSeeder implements CommandLineRunner {
                 adminRole
         );
 
-        createUserIfNotExists(
-                "doctor1",
-                "doctor123",
-                "Dr. Amit Sharma",
-                "doctor@hms.com",
-                "9999999992",
-                doctorRole
-        );
 
-        createUserIfNotExists(
-                "nurse1",
-                "nurse123",
-                "Nurse Priya",
-                "nurse@hms.com",
-                "9999999993",
-                nurseRole
-        );
-
-        createUserIfNotExists(
-                "pharma1",
-                "pharma123",
-                "Pharmacist Rahul",
-                "pharma@hms.com",
-                "9999999994",
-                pharmacistRole
-        );
-
-        createUserIfNotExists(
-                "patient1",
-                "patient123",
-                "Patient Ramesh",
-                "patient@hms.com",
-                "9999999995",
-                patientRole
-        );
-
-        createUserIfNotExists(
-                "reception1",
-                "reception123",
-                "Receptionist Neha",
-                "reception@hms.com",
-                "9999999996",
-                receptionistRole
-        );
     }
 
     private Role createRoleIfNotExists(String roleCode, String roleName, String description) {

@@ -147,6 +147,18 @@ public class VisitVitalServiceImpl implements VisitVitalService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<VisitVitalResponse> getVitalsByAppointmentId(Long appointmentId) {
+        Visit visit = visitRepository.findByAppointmentAppointmentId(appointmentId)
+                .stream().findFirst()
+                .orElse(null);
+        if (visit == null) {
+            return new ArrayList<>();
+        }
+        return getVitalsByVisitId(visit.getVisitId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MedicalConcept> searchVitalConcepts(String searchTerm) {
         // STRICT PATTERN: Filter by concept class "Test" as identified in your CIEL seeder
         return medicalConceptRepository.findByConceptClassAndConceptNameContainingIgnoreCase("Test", searchTerm);
