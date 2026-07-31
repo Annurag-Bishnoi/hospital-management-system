@@ -104,10 +104,10 @@ public class DatabaseSeeder {
                 System.out.println("CIEL Concepts (including Diagnosis) are already loaded in the database.");
             }
 
-            // Seed Users for All Roles
             String[][] rolesAndUsers = {
                 {"ADMIN", "Administrator", "admin01", "Super Admin", "admin@hospital.com"},
                 {"DOCTOR", "Doctor", "doctor01", "Dr. John Doe", "doctor@hospital.com"},
+                {"NURSE", "Nurse", "nurse01", "Nurse Jane", "nurse@hospital.com"},
                 {"RECEPTIONIST", "Receptionist", "reception01", "Front Desk", "reception@hospital.com"},
                 {"PHARMACIST", "Pharmacist", "pharma01", "Pharmacy Lead", "pharma@hospital.com"},
                 {"BILLING", "Billing Staff", "billing01", "Billing Dept", "billing@hospital.com"},
