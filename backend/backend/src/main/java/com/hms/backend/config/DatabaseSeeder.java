@@ -53,24 +53,17 @@ public class DatabaseSeeder {
                     // Use Jackson Streaming API for low memory footprint in deployment environments
                     try (tools.jackson.core.JsonParser parser = mapper.createParser(resource.getInputStream())) {
                         List<MedicalConcept> conceptsToSave = new ArrayList<>();
-                        boolean inConceptsArray = false;
-                        
                         while (!parser.isClosed()) {
                             tools.jackson.core.JsonToken token = parser.nextToken();
                             if (token == null) break;
                             
-                            if (!inConceptsArray) {
-                                if (token == tools.jackson.core.JsonToken.PROPERTY_NAME && "concepts".equals(parser.currentName())) {
-                                    token = parser.nextToken();
-                                    if (token == tools.jackson.core.JsonToken.START_ARRAY) {
-                                        inConceptsArray = true;
-                                    }
-                                }
-                            } else {
-                                if (token == tools.jackson.core.JsonToken.START_OBJECT) {
-                                    // Parse this specific concept into a JsonNode tree
-                                    JsonNode node = mapper.readTree(parser);
-                                    
+                            if (token == tools.jackson.core.JsonToken.START_OBJECT) {
+                                // Parse this specific object into a JsonNode tree
+                                JsonNode node = mapper.readTree(parser);
+                                
+                                // OCL exports stream of objects. Concepts have type='Concept'
+                                String type = node.path("type").asText();
+                                if ("Concept".equals(type) || node.has("concept_class")) {
                                     String conceptClass = node.path("concept_class").asText();
                                     if ("Test".equals(conceptClass) || "Drug".equals(conceptClass) || 
                                         "Diagnosis".equals(conceptClass) || "Symptom".equals(conceptClass) || 
@@ -85,14 +78,12 @@ public class DatabaseSeeder {
 
                                         conceptsToSave.add(new MedicalConcept(id, name, conceptClass));
                                     }
-                                    
-                                    // Save in batches to prevent memory spikes
-                                    if (conceptsToSave.size() >= 1000) {
-                                        repository.saveAll(conceptsToSave);
-                                        conceptsToSave.clear();
-                                    }
-                                } else if (token == tools.jackson.core.JsonToken.END_ARRAY) {
-                                    break;
+                                }
+                                
+                                // Save in batches to prevent memory spikes
+                                if (conceptsToSave.size() >= 1000) {
+                                    repository.saveAll(conceptsToSave);
+                                    conceptsToSave.clear();
                                 }
                             }
                         }
