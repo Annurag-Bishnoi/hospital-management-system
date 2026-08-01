@@ -48,6 +48,11 @@ public class AdminUserService {
             throw new RuntimeException("Email already exists");
         }
 
+        if (request.getPhone() != null && !request.getPhone().isBlank()
+                && userRepository.existsByPhone(request.getPhone())) {
+            throw new RuntimeException("Phone number already exists");
+        }
+
         Role role = roleRepository.findByRoleCode(request.getRoleCode())
                 .orElseThrow(() -> new RuntimeException("Invalid role: " + request.getRoleCode()));
 

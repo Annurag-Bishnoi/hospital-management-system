@@ -76,6 +76,16 @@ public class DoctorService {
             );
         }
 
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+                && userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email already exists");
+        }
+
+        if (request.getPhone() != null && !request.getPhone().isBlank()
+                && userRepository.existsByPhone(request.getPhone())) {
+            throw new RuntimeException("Phone number already exists");
+        }
+
         User user = User.builder()
                 .fullName(request.getFullName())
                 .username(username)

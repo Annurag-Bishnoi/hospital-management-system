@@ -91,6 +91,11 @@ public class PatientService {
             throw new RuntimeException("Email already exists in login users");
         }
 
+        String phone = normalize(request.getPhone());
+        if (phone != null && userRepository.existsByPhone(phone)) {
+            throw new RuntimeException("Phone number already exists in login users");
+        }
+
         User user = User.builder()
                 .username(username)
                 .passwordHash(passwordEncoder.encode(rawPassword))
