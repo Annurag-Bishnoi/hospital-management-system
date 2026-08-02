@@ -11,12 +11,16 @@ public interface MedicalConceptRepository extends JpaRepository<MedicalConcept, 
 
     // 1. Search API for the UI (Filters by class "Test" and searches by name)
     List<MedicalConcept> findByConceptClassAndConceptNameContainingIgnoreCase(String conceptClass, String conceptName);
+    List<MedicalConcept> findTop50ByConceptClassAndConceptNameContainingIgnoreCase(String conceptClass, String conceptName);
+    List<MedicalConcept> findTop50ByConceptClassAndConceptNameStartingWithIgnoreCase(String conceptClass, String conceptName);
 
     // 2. Helper to get the concept name when returning VisitVital responses
     Optional<MedicalConcept> findByCielId(String cielId);
 
     // 3. General name search
     List<MedicalConcept> findByConceptNameContainingIgnoreCase(String conceptName);
+    List<MedicalConcept> findTop50ByConceptNameContainingIgnoreCase(String conceptName);
+    List<MedicalConcept> findTop50ByConceptNameStartingWithIgnoreCase(String conceptName);
 
     // 4. Check if class exists
     boolean existsByConceptClass(String conceptClass);

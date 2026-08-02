@@ -171,6 +171,19 @@ public class VisitVitalServiceImpl implements VisitVitalService {
                     .map(MedicalConcept::getConceptName)
                     .orElse("Unknown Concept");
 
+            // Robust fallback for core vitals if CIEL dictionary is not fully seeded
+            if ("Unknown Concept".equals(conceptName)) {
+                if (vital.getCielId() != null) {
+                    long id = vital.getCielId();
+                    if (id == CIEL_SYSTOLIC_BP) conceptName = "Systolic BP";
+                    else if (id == CIEL_DIASTOLIC_BP) conceptName = "Diastolic BP";
+                    else if (id == CIEL_HEART_RATE) conceptName = "Heart Rate";
+                    else if (id == CIEL_TEMPERATURE) conceptName = "Temperature";
+                    else if (id == CIEL_RESPIRATORY) conceptName = "Respiratory Rate";
+                    else if (id == CIEL_WEIGHT) conceptName = "Weight";
+                }
+            }
+
             return VisitVitalResponse.builder()
                     .vitalId(vital.getVitalId())
                     .visitId(vital.getVisit().getVisitId())

@@ -187,6 +187,12 @@ public class AppointmentService {
                 .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + appointmentId));
         
         appointment.setPaymentStatus("PAID");
+        
+        // Auto-transition to Nurse queue
+        if ("SCHEDULED".equals(appointment.getStatus()) || "CONFIRMED".equals(appointment.getStatus())) {
+            appointment.setStatus("WAITING_FOR_VITALS");
+        }
+        
         Appointment updated = appointmentRepository.save(appointment);
 
         if (updated.getBillId() != null) {

@@ -192,9 +192,8 @@ public class VisitServiceImpl implements VisitService {
                 boolean hasExactMatch = matches.stream()
                         .anyMatch(m -> m.getConceptName().equalsIgnoreCase(medicineName.trim()));
                 if (!hasExactMatch) {
-                    throw new IllegalArgumentException(
-                        "Medication '" + medicineName + "' is not registered in the medical catalog. Please select a valid drug from the autocomplete suggestions."
-                    );
+                    System.out.println("Warning: Medication '" + medicineName + "' is not registered in the catalog but allowing it (CIEL Mock fallback).");
+                    // DO NOT THROW EXCEPTION to allow mock data or custom drugs to be prescribed.
                 }
             }
 
@@ -331,6 +330,19 @@ public class VisitServiceImpl implements VisitService {
             String conceptName = medicalConceptRepository.findByCielId(String.valueOf(vital.getCielId()))
                     .map(com.hms.backend.entity.MedicalConcept::getConceptName)
                     .orElse("Unknown Concept");
+
+            // Robust fallback for core vitals if CIEL dictionary is not fully seeded
+            if ("Unknown Concept".equals(conceptName)) {
+                if (vital.getCielId() != null) {
+                    long id = vital.getCielId();
+                    if (id == 5085L) conceptName = "Systolic BP";
+                    else if (id == 5086L) conceptName = "Diastolic BP";
+                    else if (id == 5087L) conceptName = "Heart Rate";
+                    else if (id == 5088L) conceptName = "Temperature";
+                    else if (id == 5242L) conceptName = "Respiratory Rate";
+                    else if (id == 5089L) conceptName = "Weight";
+                }
+            }
 
             return com.hms.backend.visits.dto.VisitVitalResponse.builder()
                     .vitalId(vital.getVitalId())

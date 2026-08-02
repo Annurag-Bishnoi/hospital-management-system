@@ -19,14 +19,12 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 @Configuration
 public class DatabaseSeeder {
@@ -42,32 +40,40 @@ public class DatabaseSeeder {
             InsuranceProviderRepository insuranceRepo,
             PasswordEncoder passwordEncoder) {
         return args -> {
-            boolean hasDiagnosis = false;
+            long count = 0;
             try {
-                hasDiagnosis = repository.existsByConceptClass("Diagnosis");
-            } catch (Exception e) {
-                // Ignore if table not created yet or other issues
-            }
+                count = repository.count();
+            } catch (Exception e) {}
             
             // Check if database is already fully seeded so we don't duplicate data on restart
-            if (repository.count() == 0 || !hasDiagnosis) {
+            if (count < 1000) {
                 System.out.println("Seeding CIEL Dictionary from JSON (Vitals, Drugs, and Diagnoses)...");
                 repository.deleteAll(); // clear partial seeds
 
                 ObjectMapper mapper = new ObjectMapper();
-                ClassPathResource resource = new ClassPathResource("ciel_dictionary.zip");
+                ClassPathResource resource = new ClassPathResource("ciel_dictionary.json");
 
-                try (ZipInputStream zis = new ZipInputStream(resource.getInputStream())) {
-                    ZipEntry entry = zis.getNextEntry();
-                    if (entry != null) {
-                        // Use Jackson Streaming API for low memory footprint in deployment environments
-                        try (tools.jackson.core.JsonParser parser = mapper.createParser(zis)) {
+                try {
+                    // Use Jackson Streaming API for low memory footprint in deployment environments
+                    try (com.fasterxml.jackson.core.JsonParser parser = mapper.getFactory().createParser(resource.getInputStream())) {
                         List<MedicalConcept> conceptsToSave = new ArrayList<>();
+                        com.fasterxml.jackson.core.JsonToken firstToken = parser.nextToken();
+                        System.out.println("First token is: " + firstToken);
+                        if (firstToken == com.fasterxml.jackson.core.JsonToken.START_ARRAY) {
+                            System.out.println("JSON is an array, proceeding to parse objects.");
+                        } else {
+                            System.out.println("Warning: JSON does not start with an array! Token: " + firstToken);
+                        }
+                        
+                        // We already read the first token, so we only need to read the next ones in the loop
+                        // Wait, to keep logic simple, let's just re-use the loop, but it expects to call nextToken
+                        // Since we consumed the first token, if it was START_ARRAY, the next token will be START_OBJECT.
+                        
                         while (!parser.isClosed()) {
-                            tools.jackson.core.JsonToken token = parser.nextToken();
+                            com.fasterxml.jackson.core.JsonToken token = parser.nextToken();
                             if (token == null) break;
                             
-                            if (token == tools.jackson.core.JsonToken.START_OBJECT) {
+                            if (token == com.fasterxml.jackson.core.JsonToken.START_OBJECT) {
                                 // Parse this specific object into a JsonNode tree
                                 JsonNode node = mapper.readTree(parser);
                                 
@@ -103,13 +109,12 @@ public class DatabaseSeeder {
                             repository.saveAll(conceptsToSave);
                         }
                     }
-                    }
 
                     System.out.println("=== ROLES ===");
                     roleRepository.findAll().forEach(r -> System.out.println(r.getRoleName()));
 
                 } catch (Exception e) {
-                    System.err.println("Error reading the ZIP file: " + e.getMessage());
+                    System.err.println("Error reading the JSON file: " + e.getMessage());
                 }
             } else {
                 System.out.println("CIEL Concepts (including Diagnosis) are already loaded in the database.");
