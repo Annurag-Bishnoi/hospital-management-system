@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HMS Comprehensive Database Architecture</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0a0f1c',
+                        panel: '#111827',
+                        primary: '#3b82f6',
+                        secondary: '#8b5cf6',
+                        accent: '#10b981'
+                    }
+                }
+            }
+        }
+    </script>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            securityLevel: 'loose',
+            fontFamily: 'Inter, sans-serif'
+        });
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0a0f1c; color: #e2e8f0; }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0a0f1c; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+        
+        .nav-btn {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .nav-btn.active {
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            border-bottom: 2px solid #3b82f6;
+        }
+        
+        .table-btn { transition: all 0.2s ease; border-left: 2px solid transparent; }
+        .table-btn:hover { background: rgba(51, 65, 85, 0.5); }
+        .table-btn.active {
+            background: linear-gradient(90deg, rgba(59,130,246,0.15) 0%, rgba(17,24,39,0) 100%);
+            border-left-color: #3b82f6;
+            color: #fff;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col selection:bg-primary/30 selection:text-white">
+
+    <!-- Header -->
+    <header class="glass-panel py-4 px-6 flex justify-between items-center z-20 sticky top-0 border-b border-slate-800">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-2xl shadow-[0_0_20px_rgba(59,130,246,0.4)]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-extrabold text-white tracking-tight">HMS Data Architecture <span class="text-xs font-normal bg-primary/20 text-blue-400 px-2 py-0.5 rounded ml-2 align-middle">v2.0</span></h1>
+                <p class="text-sm text-slate-400 font-medium">Interview Preparation & Architecture Guide (27 Tables)</p>
+            </div>
+        </div>
+        <div class="flex gap-2 bg-slate-900/80 p-1 rounded-lg border border-slate-800">
+            <button onclick="switchTab('diagram')" id="tab-diagram" class="nav-btn active px-5 py-2 rounded-md text-sm font-semibold tracking-wide">Master ER Diagram</button>
+            <button onclick="switchTab('tables')" id="tab-tables" class="nav-btn px-5 py-2 rounded-md text-slate-400 text-sm font-semibold tracking-wide hover:text-slate-200">Deep Dive Details</button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden relative">
+        <!-- Abstract Background -->
+        <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+        <!-- VIEW 1: MASTER ER DIAGRAM -->
+        <div id="view-diagram" class="w-full h-full flex flex-col p-6 overflow-auto custom-scrollbar z-10 relative">
+            <div class="glass-panel rounded-2xl p-6 border border-slate-800 w-full h-full flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-white flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
+                        Global Entity Relationship Diagram
+                    </h2>
+                    <span class="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">Zoom in to see exact mappings</span>
+                </div>
+                
+                <div class="flex-1 overflow-auto bg-slate-950/80 rounded-xl border border-slate-800/80 p-2 custom-scrollbar flex items-start justify-center min-h-[700px]">
+                    <div class="mermaid text-center">
+erDiagram
+    %% ==========================================
+    %% 1. AUTH & SYSTEM CORE
+    %% ==========================================
+    USERS {
+        Long user_id PK
+        String username UK
+        String password_hash
+    }
+    ROLES {
+        Long role_id PK
+        String role_code UK
+    }
+    USER_ROLES {
+        Long user_role_id PK
+        Long user_id FK
+        Long role_id FK
+    }
+    MEDICAL_CONCEPTS {
+        String cielId PK
+        String conceptName
+    }
+    STATUS_HISTORY {
+        Long id PK
+        String entityType
+        Long entityId
+    }
+    NOTIFICATIONS {
+        Long id PK
+        Long userId FK
+        String type
+    }
+
+    USERS ||--o{ USER_ROLES : has
+    ROLES ||--o{ USER_ROLES : grants
+    USERS ||--o{ NOTIFICATIONS : receives
+
+    %% ==========================================
+    %% 2. MEDICAL PROFILES (Core Entities)
+    %% ==========================================
+    DOCTORS {
+        Long doctorId PK
+        Long user_id FK
+        String department
+    }
+    PATIENTS {
+        Long patientId PK
+        Long user_id FK
+        Long insurance_provider_id FK
+    }
+    INSURANCE_PROVIDERS {
+        Long id PK
+        String providerName UK
+    }
+    PATIENT_ALLERGIES {
+        Long id PK
+        Long patient_id FK
+        String allergyName
+    }
+
+    USERS ||--o| DOCTORS : "extends as"
+    USERS ||--o| PATIENTS : "extends as"
+    INSURANCE_PROVIDERS ||--o{ PATIENTS : "covers"
+    PATIENTS ||--o{ PATIENT_ALLERGIES : "has"
+
+    %% ==========================================
+    %% 3. OPD (Appointments & Visits)
+    %% ==========================================
+    APPOINTMENTS {
+        Long appointmentId PK
+        Long patient_id FK
+        Long doctor_id FK
+        String status
+    }
+    VISITS {
+        Long visit_id PK
+        Long appointment_id FK
+        String diagnosis
+    }
+    VISIT_VITALS {
+        Long vitalId PK
+        Long visit_id FK
+        Long ciel_id
+    }
+    VISIT_LAB_TESTS {
+        Long testId PK
+        Long visit_id FK
+        String test_code
+    }
+    LAB_TEST_MASTER {
+        Long id PK
+        String cielConceptId UK
+    }
+
+    PATIENTS ||--o{ APPOINTMENTS : books
+    DOCTORS ||--o{ APPOINTMENTS : conducts
+    APPOINTMENTS ||--o| VISITS : "turns into"
+    VISITS ||--o{ VISIT_VITALS : "records"
+    VISITS ||--o{ VISIT_LAB_TESTS : "orders"
+    LAB_TEST_MASTER ||--o{ VISIT_LAB_TESTS : "defines"
+
+    %% ==========================================
+    %% 4. IPD (Inpatient Department)
+    %% ==========================================
+    WARDS {
+        Long id PK
+        String name
+    }
+    BEDS {
+        Long id PK
+        Long ward_id FK
+        String status
+    }
+    ADMISSIONS {
+        Long id PK
+        Long patient_id FK
+        Long bed_id FK
+        Long admitting_doctor_id FK
+    }
+    DAILY_ROUNDS {
+        Long id PK
+        Long admission_id FK
+        Long doctor_id FK
+    }
+    NURSING_CHARTS {
+        Long id PK
+        Long admission_id FK
+        Long nurse_id FK
+    }
+
+    WARDS ||--o{ BEDS : contains
+    PATIENTS ||--o{ ADMISSIONS : undergoes
+    BEDS ||--o| ADMISSIONS : occupies
+    USERS ||--o{ ADMISSIONS : "admits (doctor)"
+    ADMISSIONS ||--o{ DAILY_ROUNDS : receives
+    USERS ||--o{ DAILY_ROUNDS : "performs (doctor)"
+    ADMISSIONS ||--o{ NURSING_CHARTS : monitored_via
+    USERS ||--o{ NURSING_CHARTS : "records (nurse)"
+
+    %% ==========================================
+    %% 5. PHARMACY & INVENTORY
+    %% ==========================================
+    PRESCRIPTIONS {
+        Long prescriptionId PK
+        Long appointment_id FK
+    }
+    MEDICATIONS {
+        Long medicationId PK
+        Long prescription_id FK
+    }
+    INVENTORY_ITEMS {
+        Long id PK
+        String cielConceptId UK
+        Integer totalStock
+    }
+    MEDICINE_BATCHES {
+        Long batchId PK
+        Long inventory_item_id FK
+        LocalDate expiryDate
+    }
+    STOCK_AUDIT_LOGS {
+        Long auditId PK
+        Long inventory_item_id FK
+    }
+
+    VISITS ||--o| PRESCRIPTIONS : generates
+    PRESCRIPTIONS ||--o{ MEDICATIONS : contains
+    INVENTORY_ITEMS ||--o{ MEDICINE_BATCHES : stored_in
+    INVENTORY_ITEMS ||--o{ STOCK_AUDIT_LOGS : audited_by
+
+    %% ==========================================
+    %% 6. BILLING
+    %% ==========================================
+    BILLS {
+        Long id PK
+        Long patientId FK
+        BigDecimal totalAmount
+    }
+    BILL_ITEMS {
+        Long id PK
+        Long bill_id FK
+        BigDecimal totalPrice
+    }
+
+    PATIENTS ||--o{ BILLS : pays
+    BILLS ||--o{ BILL_ITEMS : contains
+                    </div>
+                </div>
+                
+                <div class="mt-4 bg-slate-900/80 p-5 rounded-xl border border-slate-700 shadow-inner">
+                    <h3 class="text-white font-bold mb-2 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                        Architecture Overview (How to explain this in an interview)
+                    </h3>
+                    <p class="text-sm text-slate-300 leading-relaxed space-y-2">
+                        <span class="block mb-2"><strong>1. Everything starts with the User:</strong> The system is secured using the <code class="text-blue-300 bg-slate-800 px-1 rounded">users</code> and <code class="text-blue-300 bg-slate-800 px-1 rounded">roles</code> tables. A physical person (Doctor, Patient, Nurse) logs in via the <code class="text-blue-300 bg-slate-800 px-1 rounded">users</code> table. From there, specific profiles (<code class="text-blue-300 bg-slate-800 px-1 rounded">doctors</code> or <code class="text-blue-300 bg-slate-800 px-1 rounded">patients</code>) extend the user entity (One-to-One) to hold domain-specific info like Specializations or Blood Groups.</span>
+                        <span class="block mb-2"><strong>2. The OPD Flow (Outpatient):</strong> A patient books an <code class="text-green-300 bg-slate-800 px-1 rounded">appointment</code>. When they arrive, the doctor starts a <code class="text-green-300 bg-slate-800 px-1 rounded">visit</code>. Inside a visit, the doctor records <code class="text-green-300 bg-slate-800 px-1 rounded">visit_vitals</code> (temperature, BP), orders <code class="text-green-300 bg-slate-800 px-1 rounded">visit_lab_tests</code>, and generates a <code class="text-green-300 bg-slate-800 px-1 rounded">prescription</code> for <code class="text-green-300 bg-slate-800 px-1 rounded">medications</code>.</span>
+                        <span class="block mb-2"><strong>3. The IPD Flow (Inpatient):</strong> If serious, a patient is moved to IPD via an <code class="text-purple-300 bg-slate-800 px-1 rounded">admission</code>. They are assigned a <code class="text-purple-300 bg-slate-800 px-1 rounded">bed</code> in a specific <code class="text-purple-300 bg-slate-800 px-1 rounded">ward</code>. Doctors perform <code class="text-purple-300 bg-slate-800 px-1 rounded">daily_rounds</code> to check progress, and nurses record <code class="text-purple-300 bg-slate-800 px-1 rounded">nursing_charts</code> throughout the day.</span>
+                        <span class="block"><strong>4. Supporting Pillars:</strong> The <strong>Pharmacy</strong> module manages physical stock via <code class="text-yellow-300 bg-slate-800 px-1 rounded">inventory_items</code> and <code class="text-yellow-300 bg-slate-800 px-1 rounded">medicine_batches</code> (FIFO logic for expiry dates). The <strong>Billing</strong> module consolidates all fees (OPD, IPD, Tests, Pharmacy) into <code class="text-pink-300 bg-slate-800 px-1 rounded">bills</code> and <code class="text-pink-300 bg-slate-800 px-1 rounded">bill_items</code>. The entire ecosystem uses <code class="text-gray-300 bg-slate-800 px-1 rounded">medical_concepts</code> (CIEL dictionary) to standardize terminology globally.</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: TABLE DEEP DIVE -->
+        <div id="view-tables" class="w-full h-full flex hidden z-10 relative">
+            <!-- Sidebar -->
+            <div class="w-80 glass-panel border-r border-slate-800 flex flex-col h-full z-10">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/50">
+                    <h2 class="text-lg font-bold text-white mb-3">Database Entities (27)</h2>
+                    <div class="relative">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 absolute left-3 top-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input type="text" id="searchInput" placeholder="Search tables..." class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-primary text-white placeholder-slate-500 transition shadow-inner">
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar" id="tableList">
+                    <!-- JS will populate this -->
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="flex-1 flex flex-col h-full bg-slate-950/30 overflow-hidden relative">
+                <div class="flex-1 p-6 lg:p-8 overflow-y-auto custom-scrollbar" id="tableDetails">
+                    <div class="h-full flex flex-col items-center justify-center text-slate-500">
+                        <div class="w-24 h-24 rounded-full bg-slate-800/50 flex items-center justify-center mb-6 shadow-lg border border-slate-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                            </svg>
+                        </div>
+                        <p class="text-2xl font-bold text-slate-300">Select an Entity</p>
+                        <p class="text-sm mt-2 text-center max-w-md">Click on any table from the sidebar to view its fields, foreign key mappings, and interview talking points.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // COMPREHENSIVE SCHEMA DATA (ALL 27 TABLES)
+        const schemaData = [
+            {
+                module: "System & Authentication",
+                icon: "M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4",
+                color: "text-blue-400",
+                tables: [
+                    {
+                        name: "User", sqlName: "users",
+                        purpose: "Central authentication entity. Stores credentials and base profile data.",
+                        interview: "Explain that this project uses a unified User model for authentication (Spring Security). Instead of having separate auth tables for Doctors and Patients, everyone logs in via this table. Their specific roles define their access, and a One-to-One relationship maps them to their specific Doctor or Patient profile.",
+                        fields: [
+                            { name: "user_id", type: "Long (PK)", desc: "Auto-increment primary key" },
+                            { name: "username, email, phone", type: "String (UK)", desc: "Unique login identifiers" },
+                            { name: "password_hash", type: "String", desc: "BCrypt hashed password" },
+                            { name: "is_active, is_account_locked", type: "Boolean", desc: "Security & Soft delete flags" }
+                        ],
+                        relations: [
+                            { type: "One-to-Many", target: "UserRole", desc: "Maps user to multiple roles" },
+                            { type: "One-to-One", target: "Doctor", desc: "Link to doctor profile (if role is doctor)" },
+                            { type: "One-to-One", target: "Patient", desc: "Link to patient profile (if role is patient)" }
+                        ]
+                    },
+                    {
+                        name: "Role", sqlName: "roles",
+                        purpose: "Defines system-wide permissions (ADMIN, DOCTOR, PATIENT, NURSE, PHARMACIST).",
+                        interview: "Highlight Role-Based Access Control (RBAC). Roles are strictly defined here, allowing the backend to secure endpoints using `@PreAuthorize('hasRole(\"DOCTOR\")')`.",
+                        fields: [
+                            { name: "role_id", type: "Long (PK)", desc: "ID" },
+                            { name: "role_code", type: "String (UK)", desc: "E.g., ROLE_ADMIN" }
+                        ],
+                        relations: [{ type: "One-to-Many", target: "UserRole", desc: "Assigned to users" }]
+                    },
+                    {
+                        name: "UserRole", sqlName: "user_roles",
+                        purpose: "Junction table mapping Users to Roles.",
+                        interview: "Mention this resolves the Many-to-Many relationship between Users and Roles into two One-to-Many relationships for better data integrity.",
+                        fields: [
+                            { name: "user_role_id", type: "Long (PK)", desc: "Junction ID" },
+                            { name: "user_id", type: "Long (FK)", desc: "Link to User" },
+                            { name: "role_id", type: "Long (FK)", desc: "Link to Role" }
+                        ],
+                        relations: [
+                            { type: "Many-to-One", target: "User", desc: "Belongs to a user" },
+                            { type: "Many-to-One", target: "Role", desc: "Refers to a role" }
+                        ]
+                    },
+                    {
+                        name: "MedicalConcept", sqlName: "medical_concepts",
+                        purpose: "Dictionary table storing standardized medical terms (CIEL dictionary).",
+                        interview: "This shows advanced architecture. Instead of hardcoding medical terms (like diseases, lab test names), the system refers to this standardized dictionary via 'cielId', ensuring global compatibility and clean data.",
+                        fields: [
+                            { name: "cielId", type: "String (PK)", desc: "Standardized CIEL Code" },
+                            { name: "conceptName", type: "String", desc: "E.g., 'Malaria', 'Blood Pressure'" }
+                        ],
+                        relations: []
+                    },
+                    {
+                        name: "StatusHistory", sqlName: "status_history",
+                        purpose: "Audit trail for tracking state changes of any entity.",
+                        interview: "Demonstrates auditability. If an Appointment changes from SCHEDULED to CANCELLED, it's logged here. It uses a generic 'entityType' and 'entityId' approach (Polymorphic association) to audit anything without creating 50 separate audit tables.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "Log ID" },
+                            { name: "entityType", type: "String", desc: "E.g., 'Appointment', 'Admission'" },
+                            { name: "entityId", type: "Long", desc: "ID of the affected record" },
+                            { name: "oldStatus, newStatus", type: "String", desc: "State transition" }
+                        ],
+                        relations: []
+                    },
+                    {
+                        name: "Notification", sqlName: "notifications",
+                        purpose: "Stores in-app alerts for users (e.g., test results ready, appointment booked).",
+                        interview: "Crucial for user engagement. Mention that it links directly to the 'userId' and has a 'readStatus' to build a real-time notification bell feature.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "userId", type: "Long (FK)", desc: "Recipient" },
+                            { name: "message, type", type: "String", desc: "Content and category" },
+                            { name: "readStatus", type: "Boolean", desc: "Is read?" }
+                        ],
+                        relations: []
+                    }
+                ]
+            },
+            {
+                module: "Core Medical Profiles",
+                icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
+                color: "text-green-400",
+                tables: [
+                    {
+                        name: "Patient", sqlName: "patients",
+                        purpose: "Detailed medical profile extending the User table.",
+                        interview: "Explain that this holds demographics and medical specifics (blood group, insurance). It connects everything: Appointments, IPD Admissions, Bills, etc. It relies on the User table for authentication.",
+                        fields: [
+                            { name: "patient_id", type: "Long (PK)", desc: "ID" },
+                            { name: "patient_code", type: "String (UK)", desc: "Hospital MRN" },
+                            { name: "user_id", type: "Long (FK)", desc: "Link to Auth User" },
+                            { name: "blood_group, gender, dob", type: "Various", desc: "Demographics" },
+                            { name: "insurance_provider_id", type: "Long (FK)", desc: "Link to Insurance" }
+                        ],
+                        relations: [
+                            { type: "One-to-Many", target: "Appointment", desc: "Books appointments" },
+                            { type: "One-to-Many", target: "Admission", desc: "IPD stays" },
+                            { type: "One-to-Many", target: "Bill", desc: "Pays bills" }
+                        ]
+                    },
+                    {
+                        name: "Doctor", sqlName: "doctors",
+                        purpose: "Professional profile extending the User table.",
+                        interview: "Stores professional data like specialization and consultation fee. Linked to appointments and IPD rounds.",
+                        fields: [
+                            { name: "doctor_id", type: "Long (PK)", desc: "ID" },
+                            { name: "doctorCode", type: "String (UK)", desc: "License / Staff ID" },
+                            { name: "user_id", type: "Long (FK)", desc: "Link to Auth User" },
+                            { name: "department, specialization", type: "String", desc: "Medical specialty" },
+                            { name: "consultationFee", type: "Double", desc: "Used by billing module" }
+                        ],
+                        relations: [
+                            { type: "One-to-Many", target: "Appointment", desc: "Conducts appointments" }
+                        ]
+                    },
+                    {
+                        name: "InsuranceProvider", sqlName: "insurance_providers",
+                        purpose: "Lookup table for insurance companies.",
+                        interview: "Simple dictionary table to normalize insurance data instead of typing it as plain text in the patient record.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "providerName", type: "String (UK)", desc: "Company name" },
+                            { name: "standardCoveragePercentage", type: "Double", desc: "Default coverage amount" }
+                        ],
+                        relations: [{ type: "One-to-Many", target: "Patient", desc: "Covers patients" }]
+                    },
+                    {
+                        name: "PatientAllergy", sqlName: "patient_allergies",
+                        purpose: "Tracks known patient allergies.",
+                        interview: "Separated into a One-to-Many table because a patient can have multiple allergies. Tracks severity to warn doctors during prescription.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "patient_id", type: "Long (FK)", desc: "Affected patient" },
+                            { name: "allergyName, severity", type: "String", desc: "What they are allergic to" }
+                        ],
+                        relations: [{ type: "Many-to-One", target: "Patient", desc: "Belongs to patient" }]
+                    }
+                ]
+            },
+            {
+                module: "OPD: Appointments & Visits",
+                icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+                color: "text-purple-400",
+                tables: [
+                    {
+                        name: "Appointment", sqlName: "appointments",
+                        purpose: "Pre-scheduled interaction between Patient and Doctor.",
+                        interview: "Explain the difference between Appointment and Visit. Appointment is the *booking* (future). It handles the schedule, token number, and initial payment status.",
+                        fields: [
+                            { name: "appointmentId", type: "Long (PK)", desc: "ID" },
+                            { name: "patient_id, doctor_id", type: "Long (FK)", desc: "The two parties involved" },
+                            { name: "appointmentDate, appointmentTime", type: "LocalDate/Time", desc: "When it happens" },
+                            { name: "status", type: "String", desc: "SCHEDULED, CANCELLED, COMPLETED" }
+                        ],
+                        relations: [{ type: "One-to-One", target: "Visit", desc: "Converts to a Visit when the patient arrives" }]
+                    },
+                    {
+                        name: "Visit", sqlName: "visits",
+                        purpose: "The actual medical encounter.",
+                        interview: "This is the core clinical record. Once the patient walks into the doctor's room, a Visit is created. It acts as the anchor for Vitals, Lab Tests, and Prescriptions generated *during* that specific session.",
+                        fields: [
+                            { name: "visit_id", type: "Long (PK)", desc: "ID" },
+                            { name: "appointment_id", type: "Long (FK)", desc: "Source appointment" },
+                            { name: "diagnosis, notes", type: "String", desc: "Doctor's conclusion" }
+                        ],
+                        relations: [
+                            { type: "One-to-Many", target: "VisitVital", desc: "Vitals taken" },
+                            { type: "One-to-Many", target: "VisitLabTest", desc: "Tests ordered" },
+                            { type: "One-to-One", target: "Prescription", desc: "Meds prescribed" }
+                        ]
+                    },
+                    {
+                        name: "VisitVital", sqlName: "visit_vitals",
+                        purpose: "Records physical measurements (BP, Temp, HR).",
+                        interview: "Emphasize that it uses 'ciel_id' from MedicalConcepts to define *what* is being measured, making it highly dynamic instead of hardcoding columns for Blood Pressure, Temperature, etc.",
+                        fields: [
+                            { name: "vitalId", type: "Long (PK)", desc: "ID" },
+                            { name: "visit_id", type: "Long (FK)", desc: "Anchor visit" },
+                            { name: "ciel_id", type: "Long", desc: "What is measured (e.g. CIEL code for BP)" },
+                            { name: "vitalValue, unit", type: "String", desc: "The measurement (e.g., '120/80', 'mmHg')" }
+                        ],
+                        relations: [{ type: "Many-to-One", target: "Visit", desc: "Belongs to visit" }]
+                    },
+                    {
+                        name: "LabTestMaster", sqlName: "lab_test_master",
+                        purpose: "Catalog of all available lab tests and their prices.",
+                        interview: "This is the Master Data Management (MDM) table for the laboratory. When a doctor orders a test, they pick from this list.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "cielConceptId", type: "String (UK)", desc: "Standard CIEL code" },
+                            { name: "testName", type: "String", desc: "Display name" },
+                            { name: "unitPrice", type: "BigDecimal", desc: "Cost for billing" }
+                        ],
+                        relations: []
+                    },
+                    {
+                        name: "VisitLabTest", sqlName: "visit_lab_tests",
+                        purpose: "A specific test ordered during a Visit.",
+                        interview: "Explain that this tracks the lifecycle of a lab test from ORDERED -> PENDING -> COMPLETED. It links the clinical side (Visit) with the financial side (paymentStatus, bill_id).",
+                        fields: [
+                            { name: "testId", type: "Long (PK)", desc: "ID" },
+                            { name: "visit_id", type: "Long (FK)", desc: "Anchor visit" },
+                            { name: "test_code", type: "String", desc: "Code from LabTestMaster" },
+                            { name: "resultValue, referenceRange", type: "String", desc: "Lab technician input" },
+                            { name: "status, paymentStatus, billId", type: "Various", desc: "State and billing tracking" }
+                        ],
+                        relations: [{ type: "Many-to-One", target: "Visit", desc: "Ordered during visit" }]
+                    }
+                ]
+            },
+            {
+                module: "IPD: Inpatient Department",
+                icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
+                color: "text-red-400",
+                tables: [
+                    {
+                        name: "Ward", sqlName: "wards",
+                        purpose: "Defines hospital areas (e.g., General, ICU).",
+                        interview: "This is a structural table managing hospital capacity and base daily charges for billing.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "name", type: "String (UK)", desc: "Ward name" },
+                            { name: "capacity, dailyCharge", type: "Various", desc: "Logistics and billing" }
+                        ],
+                        relations: [{ type: "One-to-Many", target: "Bed", desc: "Contains multiple beds" }]
+                    },
+                    {
+                        name: "Bed", sqlName: "beds",
+                        purpose: "Specific beds inside a ward.",
+                        interview: "Crucial for admission logistics. The 'status' field (AVAILABLE, OCCUPIED, MAINTENANCE) prevents double-booking a bed.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "ward_id", type: "Long (FK)", desc: "Parent ward" },
+                            { name: "bedNumber", type: "String (UK)", desc: "E.g., ICU-01" },
+                            { name: "status", type: "String", desc: "Availability" }
+                        ],
+                        relations: [
+                            { type: "Many-to-One", target: "Ward", desc: "Belongs to ward" },
+                            { type: "One-to-Many", target: "Admission", desc: "Occupied by admissions" }
+                        ]
+                    },
+                    {
+                        name: "Admission", sqlName: "admissions",
+                        purpose: "The core record of a patient's stay in the hospital.",
+                        interview: "This is the IPD equivalent of the OPD 'Visit'. It anchors everything that happens while the patient sleeps in the hospital (daily rounds, nursing charts). When status changes to DISCHARGED, a massive final bill is calculated.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "patient_id", type: "Long (FK)", desc: "Who is admitted" },
+                            { name: "bed_id", type: "Long (FK)", desc: "Where they sleep" },
+                            { name: "admissionDate, dischargeDate", type: "LocalDateTime", desc: "Stay duration" },
+                            { name: "status, admissionDiagnosis", type: "String", desc: "State and reason" }
+                        ],
+                        relations: [
+                            { type: "One-to-Many", target: "DailyRound", desc: "Doctor checks" },
+                            { type: "One-to-Many", target: "NursingChart", desc: "Nurse monitoring" }
+                        ]
+                    },
+                    {
+                        name: "DailyRound", sqlName: "daily_rounds",
+                        purpose: "Doctor's clinical notes taken during daily checks.",
+                        interview: "Links a specific Doctor (via User table) to an Admission to record ongoing progress.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "admission_id", type: "Long (FK)", desc: "Anchor admission" },
+                            { name: "doctor_id", type: "Long (FK)", desc: "Checking doctor (User)" },
+                            { name: "clinicalNotes", type: "String", desc: "Observations" }
+                        ],
+                        relations: [{ type: "Many-to-One", target: "Admission", desc: "Belongs to admission" }]
+                    },
+                    {
+                        name: "NursingChart", sqlName: "nursing_charts",
+                        purpose: "Frequent vital monitoring by nurses.",
+                        interview: "Similar to VisitVital, but specifically tied to an IPD Admission and tracked repeatedly (every few hours).",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "admission_id", type: "Long (FK)", desc: "Anchor admission" },
+                            { name: "nurse_id", type: "Long (FK)", desc: "Attending nurse (User)" },
+                            { name: "temperature, bloodPressure, heartRate, spo2", type: "Various", desc: "Hardcoded vitals for quick access" }
+                        ],
+                        relations: [{ type: "Many-to-One", target: "Admission", desc: "Belongs to admission" }]
+                    }
+                ]
+            },
+            {
+                module: "Pharmacy & Inventory",
+                icon: "M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z",
+                color: "text-yellow-400",
+                tables: [
+                    {
+                        name: "Prescription", sqlName: "prescriptions",
+                        purpose: "A doctor's order for medication.",
+                        interview: "Acts as a header table. Tied strictly to an Appointment/Visit. It doesn't contain drugs itself, it acts as a container for Medication records.",
+                        fields: [
+                            { name: "prescriptionId", type: "Long (PK)", desc: "ID" },
+                            { name: "appointment_id", type: "Long (FK)", desc: "Link to context" },
+                            { name: "diagnosis", type: "String", desc: "Why prescribed" }
+                        ],
+                        relations: [{ type: "One-to-Many", target: "Medication", desc: "Line items of drugs" }]
+                    },
+                    {
+                        name: "Medication", sqlName: "medications",
+                        purpose: "Specific drug line item on a prescription.",
+                        interview: "Stores dosage, frequency (e.g., '1-0-1'), and duration. This data flows to the pharmacy for dispensing.",
+                        fields: [
+                            { name: "medicationId", type: "Long (PK)", desc: "ID" },
+                            { name: "prescription_id", type: "Long (FK)", desc: "Parent prescription" },
+                            { name: "medicineName, dosage, frequency, duration", type: "String", desc: "Drug instructions" }
+                        ],
+                        relations: [{ type: "Many-to-One", target: "Prescription", desc: "Belongs to prescription" }]
+                    },
+                    {
+                        name: "InventoryItem", sqlName: "inventory_items",
+                        purpose: "Master catalog of all drugs available in the pharmacy.",
+                        interview: "Crucial design point: This tracks the *total* abstract stock and reorder levels. It does NOT track expiry dates. Expiry dates are handled by Batches.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "medicineName", type: "String", desc: "Drug Name" },
+                            { name: "totalStock, reorderLevel", type: "Integer", desc: "Logistics tracking" }
+                        ],
+                        relations: [
+                            { type: "One-to-Many", target: "MedicineBatch", desc: "Physical shipments of this drug" },
+                            { type: "One-to-Many", target: "StockAuditLog", desc: "Adjustment tracking" }
+                        ]
+                    },
+                    {
+                        name: "MedicineBatch", sqlName: "medicine_batches",
+                        purpose: "Physical stock tracking with expiry dates.",
+                        interview: "Explain 'FIFO' (First-In, First-Out). By splitting InventoryItem and MedicineBatch, the system can track that we have 100 Paracetamol expiring in 2025, and 50 expiring in 2026. This prevents dispensing expired drugs.",
+                        fields: [
+                            { name: "batchId", type: "Long (PK)", desc: "ID" },
+                            { name: "inventory_item_id", type: "Long (FK)", desc: "Which drug this is" },
+                            { name: "batchNumber", type: "String", desc: "Manufacturer lot" },
+                            { name: "quantity", type: "Integer", desc: "Amount in this batch" },
+                            { name: "expiryDate", type: "LocalDate", desc: "Spoilage date" },
+                            { name: "unitPrice", type: "BigDecimal", desc: "Cost basis" }
+                        ],
+                        relations: [{ type: "Many-to-One", target: "InventoryItem", desc: "Belongs to item" }]
+                    },
+                    {
+                        name: "StockAuditLog", sqlName: "stock_audit_logs",
+                        purpose: "Security trail for inventory changes.",
+                        interview: "Prevents pharmacy theft. Any manual adjustment to stock is logged here with who did it and why.",
+                        fields: [
+                            { name: "auditId", type: "Long (PK)", desc: "ID" },
+                            { name: "inventory_item_id", type: "Long (FK)", desc: "Affected drug" },
+                            { name: "adjustmentQuantity", type: "Integer", desc: "Positive or negative change" },
+                            { name: "reason, adjustedBy", type: "String", desc: "Explanation and User" }
+                        ],
+                        relations: []
+                    }
+                ]
+            },
+            {
+                module: "Billing & Finance",
+                icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+                color: "text-pink-400",
+                tables: [
+                    {
+                        name: "Bill", sqlName: "bills",
+                        purpose: "Header record for financial transactions.",
+                        interview: "Explain that Bills are departmentalized. A patient might have a PHARMACY bill and a CONSULTATION bill. It tracks the grand totals, taxes, and insurance discounts.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "patientId", type: "Long", desc: "Who owes money" },
+                            { name: "department", type: "String", desc: "PHARMACY, IPD, CONSULTATION" },
+                            { name: "totalAmount, discountAmount, patientPayableAmount", type: "BigDecimal", desc: "Financial math" },
+                            { name: "status", type: "String", desc: "UNPAID, PAID" }
+                        ],
+                        relations: [{ type: "One-to-Many", target: "BillItem", desc: "Line items" }]
+                    },
+                    {
+                        name: "BillItem", sqlName: "bill_items",
+                        purpose: "Individual charges making up a bill.",
+                        interview: "A single bill can have many items (e.g., 1x Consultation Fee + 2x Lab Tests). This breaks down the invoice so patients see exactly what they are paying for.",
+                        fields: [
+                            { name: "id", type: "Long (PK)", desc: "ID" },
+                            { name: "bill_id", type: "Long (FK)", desc: "Parent bill" },
+                            { name: "description", type: "String", desc: "What was sold/done" },
+                            { name: "quantity, unitPrice, totalPrice", type: "Various", desc: "Line math (Qty * Price)" }
+                        ],
+                        relations: [{ type: "Many-to-One", target: "Bill", desc: "Belongs to bill" }]
+                    }
+                ]
+            }
+        ];
+
+        // UI Logic
+        function switchTab(tab) {
+            document.getElementById('tab-diagram').classList.toggle('active', tab === 'diagram');
+            document.getElementById('tab-diagram').classList.toggle('text-slate-400', tab !== 'diagram');
+            
+            document.getElementById('tab-tables').classList.toggle('active', tab === 'tables');
+            document.getElementById('tab-tables').classList.toggle('text-slate-400', tab !== 'tables');
+
+            document.getElementById('view-diagram').classList.toggle('hidden', tab !== 'diagram');
+            document.getElementById('view-tables').classList.toggle('hidden', tab !== 'tables');
+
+            if (tab === 'tables' && document.getElementById('tableList').children.length === 0) {
+                renderSidebar();
+            }
+        }
+
+        let activeTable = null;
+
+        function renderSidebar(filter = '') {
+            const container = document.getElementById('tableList');
+            container.innerHTML = '';
+            
+            schemaData.forEach(module => {
+                const filteredTables = module.tables.filter(t => 
+                    t.name.toLowerCase().includes(filter.toLowerCase()) || 
+                    t.sqlName.toLowerCase().includes(filter.toLowerCase())
+                );
+                if (filteredTables.length === 0) return;
+
+                const modDiv = document.createElement('div');
+                modDiv.className = 'mb-6';
+                
+                const modTitle = document.createElement('h3');
+                modTitle.className = `text-xs font-bold uppercase tracking-wider mb-2 flex items-center ${module.color}`;
+                modTitle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${module.icon}" /></svg>${module.module}`;
+                modDiv.appendChild(modTitle);
+
+                const ul = document.createElement('ul');
+                ul.className = 'space-y-0.5 ml-1 relative border-l border-slate-800';
+                
+                filteredTables.forEach(table => {
+                    const li = document.createElement('li');
+                    const btn = document.createElement('button');
+                    btn.className = `w-full text-left pl-4 py-2 text-sm font-medium table-btn ${activeTable === table.name ? 'active' : 'text-slate-400'}`;
+                    btn.innerHTML = `<span class="block text-slate-200">${table.name}</span><span class="block text-xs font-mono opacity-60 mt-0.5">${table.sqlName}</span>`;
+                    
+                    btn.onclick = () => {
+                        activeTable = table.name;
+                        renderSidebar(filter);
+                        renderTableDetails(table, module);
+                    };
+                    
+                    li.appendChild(btn);
+                    ul.appendChild(li);
+                });
+                
+                modDiv.appendChild(ul);
+                container.appendChild(modDiv);
+            });
+        }
+
+        function renderTableDetails(table, module) {
+            const container = document.getElementById('tableDetails');
+            
+            let fieldsHtml = table.fields.map(f => `
+                <tr class="border-b border-slate-800/60 hover:bg-slate-800/30 transition">
+                    <td class="py-3 px-4 font-mono text-sm text-blue-400 font-medium">${f.name}</td>
+                    <td class="py-3 px-4 text-sm text-purple-400 font-mono">${f.type}</td>
+                    <td class="py-3 px-4 text-sm text-slate-300">${f.desc}</td>
+                </tr>
+            `).join('');
+
+            let relHtml = table.relations.map(r => `
+                <div class="flex items-start p-3 bg-slate-900/80 rounded-xl border border-slate-700/50 hover:border-slate-600 transition">
+                    <div class="mt-1 bg-slate-800 p-1.5 rounded-lg mr-3 text-purple-400 shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-white">${r.target} <span class="text-[10px] font-mono font-normal text-slate-300 bg-slate-700/50 px-2 py-0.5 rounded ml-2 border border-slate-600">${r.type}</span></p>
+                        <p class="text-xs text-slate-400 mt-1.5">${r.desc}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="max-w-5xl mx-auto pb-10">
+                    <!-- Header Card -->
+                    <div class="glass-panel rounded-2xl p-6 mb-6 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-48 h-48 bg-primary/10 blur-[60px] rounded-full -mr-10 -mt-10"></div>
+                        <div class="flex items-center space-x-2 mb-3">
+                            <span class="flex items-center text-xs font-bold uppercase tracking-wider ${module.color}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${module.icon}" /></svg>
+                                ${module.module}
+                            </span>
+                        </div>
+                        <h2 class="text-4xl font-extrabold text-white tracking-tight mb-1">${table.name}</h2>
+                        <div class="flex items-center mb-6">
+                            <span class="text-slate-400 text-sm mr-2">SQL Table:</span>
+                            <span class="font-mono text-sm bg-slate-800 text-blue-300 px-2.5 py-1 rounded-md border border-slate-700">${table.sqlName}</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed text-lg">${table.purpose}</p>
+                    </div>
+
+                    <!-- INTERVIEW CHEAT SHEET (New Section) -->
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/50 rounded-2xl border-l-4 border-accent p-6 mb-8 shadow-lg">
+                        <h3 class="font-bold text-white mb-2 flex items-center text-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
+                            </svg>
+                            Interview Talking Points
+                        </h3>
+                        <p class="text-slate-300 leading-relaxed italic border-l border-slate-700 pl-4 py-1">"${table.interview}"</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Fields Table -->
+                        <div class="lg:col-span-2 glass-panel rounded-2xl overflow-hidden">
+                            <div class="px-6 py-4 border-b border-slate-800 bg-slate-900/60 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                </svg>
+                                <h3 class="font-bold text-white">Schema definition</h3>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead>
+                                        <tr class="bg-slate-950/80 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-800">
+                                            <th class="py-3 px-4 font-semibold">Field Name</th>
+                                            <th class="py-3 px-4 font-semibold">Data Type</th>
+                                            <th class="py-3 px-4 font-semibold">Purpose</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${fieldsHtml}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Relationships -->
+                        <div class="glass-panel rounded-2xl p-6 h-fit">
+                            <h3 class="font-bold text-white mb-4 flex items-center border-b border-slate-800 pb-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                                Entity Linkages
+                            </h3>
+                            <div class="space-y-3">
+                                ${relHtml || `
+                                    <div class="flex items-center justify-center p-6 border border-dashed border-slate-700 rounded-xl text-slate-500 bg-slate-900/30">
+                                        <p class="text-sm text-center">No explicit outgoing foreign keys.<br>This is likely a lookup table or leaf node.</p>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            renderSidebar(e.target.value);
+        });
+        
+        // Init
+        switchTab('diagram');
+    </script>
+</body>
+</html>

@@ -291,7 +291,14 @@ public class PharmacyService {
             }
         }
         billRequest.setItems(billItems);
-        billingService.generateBill(billRequest);
+        com.hms.backend.billing.dto.BillResponse generatedBill = billingService.generateBill(billRequest);
+
+        com.hms.backend.billing.dto.PaymentRequest paymentReq = new com.hms.backend.billing.dto.PaymentRequest();
+        paymentReq.setProcessedBy(currentUser);
+        paymentReq.setDiscountAmount(BigDecimal.ZERO);
+        paymentReq.setTaxPercentage(BigDecimal.ZERO);
+        paymentReq.setInsuranceCoverageAmount(BigDecimal.ZERO);
+        billingService.processPayment(generatedBill.getId(), paymentReq);
 
         return DispenseResponse.builder()
                 .status("DISPENSED")
